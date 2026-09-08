@@ -1,8 +1,9 @@
 import type { ButtonProps, ButtonVariant } from "@/types/button";
 
 const variantClass: Record<ButtonVariant, string> = {
-  primary: "bg-brgy-navy text-white hover:bg-brgy-navy-mid",
+  primary: "bg-[#1a4d8c] text-white hover:bg-[#163e70]",
   secondary: "border border-brgy-navy/20 bg-white text-brgy-navy hover:bg-brgy-paper",
+  link: "bg-transparent px-1 text-brgy-navy hover:underline",
 };
 
 export function Button({

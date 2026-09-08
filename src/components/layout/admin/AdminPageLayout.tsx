@@ -17,7 +17,7 @@ export function AdminPageLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-brgy-paper">
+    <div className="flex min-h-screen bg-[#f3f4f6] font-sans text-brgy-ink">
       <AdminSideBar open={open} onClose={() => setOpen(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -25,7 +25,7 @@ export function AdminPageLayout({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             aria-label="Open sidebar"
-            className="m-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-brgy-navy text-brgy-gold shadow-sm transition-colors hover:bg-brgy-navy-mid"
+            className="m-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#1a4d8c] text-white shadow-sm"
             onClick={() => setOpen(true)}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">

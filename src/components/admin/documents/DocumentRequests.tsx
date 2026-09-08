@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { DocumentRequest, ProcessStatus, VerificationStatus } from "@/types/documentRequest";
 import { RequestViewModal } from "./RequestViewModal";
 import { Button } from "@/components/common/Button";
+import { StatCard } from "@/components/common/StatCard";
 import { processClass, verificationClass } from "@/common/statusStyles";
 
 const pendingVerification = "Pending" satisfies VerificationStatus;
@@ -121,52 +122,42 @@ export function DocumentRequests() {
       setLoadingId(null);
     }, 800);
   }
+
   const pendingCount = requests.filter((request) => request.verification === pendingVerification).length;
   const inProcessCount = requests.filter((request) => request.process === inProcess).length;
   const readyCount = requests.filter((request) => request.process === done).length;
   const pickedUpCount = requests.filter((request) => request.process === pickedUp).length;
 
   return (
-    <div className="px-4 py-6 text-brgy-ink lg:px-8 lg:py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-brgy-navy lg:text-3xl">
-          Document Requests
-        </h1>
-        <p className="mt-2 max-w-2xl text-base leading-relaxed text-brgy-muted">
-          Verify the request first. After the document is prepared, mark it done. When the resident claims it, mark it picked up.
+    <div className="px-6 py-6 text-brgy-ink lg:px-10 lg:py-8">
+      <p className="mb-4 text-sm text-neutral-400">
+        Home <span className="mx-1">&gt;</span> Document Requests
+      </p>
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-[#1a4d8c]">Document Requests</h1>
+        <p className="mt-2 max-w-3xl text-base text-neutral-600">
+          Review papers requested by residents, such as clearances and certificates, then approve or return them.
         </p>
       </div>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-xl border border-black/8 bg-white px-4 py-4 shadow-sm">
-          <p className="text-sm text-brgy-muted">Pending verification</p>
-          <p className="mt-1 text-2xl font-semibold text-brgy-navy">{pendingCount}</p>
-        </article>
-        <article className="rounded-xl border border-black/8 bg-white px-4 py-4 shadow-sm">
-          <p className="text-sm text-brgy-muted">In process</p>
-          <p className="mt-1 text-2xl font-semibold text-brgy-navy">{inProcessCount}</p>
-        </article>
-        <article className="rounded-xl border border-black/8 bg-white px-4 py-4 shadow-sm">
-          <p className="text-sm text-brgy-muted">Ready for pickup</p>
-          <p className="mt-1 text-2xl font-semibold text-brgy-navy">{readyCount}</p>
-        </article>
-        <article className="rounded-xl border border-black/8 bg-white px-4 py-4 shadow-sm">
-          <p className="text-sm text-brgy-muted">Picked up</p>
-          <p className="mt-1 text-2xl font-semibold text-brgy-navy">{pickedUpCount}</p>
-        </article>
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard value={pendingCount} label="Pending Verification" />
+        <StatCard value={inProcessCount} label="In Process" />
+        <StatCard value={readyCount} label="Ready to pickup" />
+        <StatCard value={pickedUpCount} label="Approved / Picked up" />
       </div>
 
-      <section className="overflow-hidden rounded-xl border border-black/8 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-black/5 bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
-            <thead className="border-b border-black/10 bg-brgy-paper/70 text-brgy-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Resident</th>
-                <th className="px-4 py-3 font-medium">Document</th>
-                <th className="px-4 py-3 font-medium">Verification</th>
-                <th className="px-4 py-3 font-medium">Process</th>
-                <th className="px-4 py-3 font-medium">
-                  <span className="mx-auto block w-[13.75rem] text-center">Action</span>
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-neutral-200">
+                <th className="px-5 py-4 text-xs font-bold tracking-wide text-brgy-ink">RESIDENT</th>
+                <th className="px-5 py-4 text-xs font-bold tracking-wide text-brgy-ink">DOCUMENT</th>
+                <th className="px-5 py-4 text-xs font-bold tracking-wide text-brgy-ink">VERIFICATION</th>
+                <th className="px-5 py-4 text-xs font-bold tracking-wide text-brgy-ink">PROCESS</th>
+                <th className="px-5 py-4 text-xs font-bold tracking-wide text-brgy-ink">
+                  <span className="mx-auto block w-[13.75rem] text-center">ACTION</span>
                 </th>
               </tr>
             </thead>
@@ -175,29 +166,29 @@ export function DocumentRequests() {
                 const nextAction = getNextAction(request);
 
                 return (
-                  <tr key={request.id} className="border-b border-black/5 last:border-0">
-                    <td className="px-4 py-3">
+                  <tr key={request.id} className="border-b border-neutral-200 last:border-0">
+                    <td className="px-5 py-4">
                       <p className="font-medium">{request.name}</p>
-                      <p className="text-xs text-brgy-muted">
+                      <p className="text-xs text-neutral-500">
                         {request.id} · {request.date}
                       </p>
                     </td>
-                    <td className="px-4 py-3">{request.type}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">{request.type}</td>
+                    <td className="px-5 py-4">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${verificationClass[request.verification]}`}
                       >
                         {request.verification}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${processClass[request.process]}`}
                       >
                         {request.process}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <div className="mx-auto grid w-[13.75rem] grid-cols-[5.25rem_1fr] items-center gap-2">
                         <Button variant="secondary" onClick={() => setSelected(request)}>
                           View
@@ -211,7 +202,7 @@ export function DocumentRequests() {
                             {nextAction}
                           </Button>
                         ) : (
-                          <span className="inline-flex h-8 w-full items-center justify-center text-sm font-medium text-brgy-muted">
+                          <span className="inline-flex h-8 w-full items-center justify-center text-sm font-medium text-neutral-400">
                             —
                           </span>
                         )}
@@ -224,6 +215,19 @@ export function DocumentRequests() {
           </table>
         </div>
       </section>
+
+      <div className="flex items-center justify-center gap-3 pt-6">
+        {[1, 2, 3, 4, 5].map((page) => (
+          <span
+            key={page}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm ${
+              page === 1 ? "bg-[#1a4d8c] font-medium text-white" : "text-brgy-ink"
+            }`}
+          >
+            {page}
+          </span>
+        ))}
+      </div>
 
       {selected ? <RequestViewModal request={selected} onClose={() => setSelected(null)} /> : null}
     </div>
