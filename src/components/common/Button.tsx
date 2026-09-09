@@ -1,13 +1,19 @@
-import type { ButtonProps, ButtonVariant } from "@/types/button";
+import type { ButtonProps, ButtonSize, ButtonVariant } from "@/types/button";
 
 const variantClass: Record<ButtonVariant, string> = {
-  primary: "bg-brgy-navy text-white hover:bg-brgy-navy-mid",
-  secondary: "border border-brgy-navy/20 bg-white text-brgy-navy hover:bg-brgy-paper",
+  primary: "bg-brgy-sidebar text-white hover:bg-brgy-sidebar/90",
+  secondary: "border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50",
+};
+
+const sizeClass: Record<ButtonSize, string> = {
+  sm: "h-8 rounded-md px-3 text-xs",
+  md: "h-10 min-w-[8.75rem] rounded-lg px-5 text-sm shadow-sm",
 };
 
 export function Button({
   children,
   variant = "primary",
+  size = "sm",
   type = "button",
   className = "",
   loading = false,
@@ -19,7 +25,7 @@ export function Button({
       type={type}
       disabled={disabled || loading}
       aria-busy={loading}
-      className={`inline-flex h-8 items-center justify-center rounded-md px-3 text-xs font-semibold disabled:cursor-wait disabled:opacity-80 ${variantClass[variant]} ${className}`}
+      className={`inline-flex items-center justify-center font-semibold disabled:cursor-wait disabled:opacity-80 ${sizeClass[size]} ${variantClass[variant]} ${className}`}
       {...props}
     >
       {loading ? (

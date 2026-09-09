@@ -12,6 +12,11 @@ export const adminNavItems: AdminNavItem[] = [
     exact: false,
   },
   {
+    href: "/admin/residents",
+    label: "Residents",
+    exact: false,
+  },
+  {
     href: "/admin/audit-trail",
     label: "Audit Trail",
     exact: false,

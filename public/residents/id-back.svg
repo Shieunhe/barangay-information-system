@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300" fill="none">
+  <rect width="480" height="300" rx="16" fill="#1A4D8C"/>
+  <rect x="16" y="16" width="448" height="268" rx="12" fill="#F4F7FB"/>
+  <text x="32" y="56" fill="#1A4D8C" font-family="Arial" font-size="16" font-weight="700">National ID  Back</text>
+  <rect x="32" y="76" width="416" height="72" rx="8" fill="#D9E2F1"/>
+  <rect x="48" y="96" width="280" height="10" rx="4" fill="#496AA6"/>
+  <rect x="48" y="116" width="320" height="10" rx="4" fill="#8AA3C9"/>
+  <rect x="32" y="168" width="200" height="12" rx="4" fill="#E5E7EB"/>
+  <rect x="32" y="192" width="260" height="12" rx="4" fill="#E5E7EB"/>
+  <rect x="32" y="216" width="180" height="12" rx="4" fill="#E5E7EB"/>
+  <rect x="320" y="176" width="128" height="72" rx="8" fill="#C5A059"/>
+</svg>
