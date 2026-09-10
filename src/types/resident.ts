@@ -11,7 +11,6 @@ export type Resident = {
   contact: string;
   dateFiled: string;
   status: ResidentStatus;
-  nationalIdFront: string;
-  nationalIdBack: string;
+  organization: string | null;
   declineReason: string | null;
 };

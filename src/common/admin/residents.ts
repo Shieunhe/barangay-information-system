@@ -12,8 +12,7 @@ export const initialResidents: Resident[] = [
     contact: "0917 555 2101",
     dateFiled: "Sept. 8, 2026",
     status: "Pending",
-    nationalIdFront: "/residents/id-front.svg",
-    nationalIdBack: "/residents/id-back.svg",
+    organization: null,
     declineReason: null,
   },
   {
@@ -27,8 +26,7 @@ export const initialResidents: Resident[] = [
     contact: "0918 442 1188",
     dateFiled: "Sept. 7, 2026",
     status: "Pending",
-    nationalIdFront: "/residents/id-front.svg",
-    nationalIdBack: "/residents/id-back.svg",
+    organization: null,
     declineReason: null,
   },
   {
@@ -42,8 +40,7 @@ export const initialResidents: Resident[] = [
     contact: "0922 300 7745",
     dateFiled: "Sept. 6, 2026",
     status: "Registered",
-    nationalIdFront: "/residents/id-front.svg",
-    nationalIdBack: "/residents/id-back.svg",
+    organization: "Vendor",
     declineReason: null,
   },
   {
@@ -57,8 +54,7 @@ export const initialResidents: Resident[] = [
     contact: "0916 889 3340",
     dateFiled: "Sept. 5, 2026",
     status: "Registered",
-    nationalIdFront: "/residents/id-front.svg",
-    nationalIdBack: "/residents/id-back.svg",
+    organization: "Tricycle Driver",
     declineReason: null,
   },
   {
@@ -72,8 +68,7 @@ export const initialResidents: Resident[] = [
     contact: "0908 221 6672",
     dateFiled: "Sept. 4, 2026",
     status: "Not registered",
-    nationalIdFront: "/residents/id-front.svg",
-    nationalIdBack: "/residents/id-back.svg",
+    organization: null,
     declineReason: "Not a resident of this barangay",
   },
 ];

@@ -3,7 +3,7 @@ import type { AdminNavItem } from "@/types/adminNav";
 export const adminNavItems: AdminNavItem[] = [
   {
     href: "/admin/dashboard",
-    label: "Overview",
+    label: "Dashboard",
     exact: true,
   },
   {
@@ -14,6 +14,11 @@ export const adminNavItems: AdminNavItem[] = [
   {
     href: "/admin/residents",
     label: "Residents",
+    exact: false,
+  },
+  {
+    href: "/admin/events",
+    label: "Events",
     exact: false,
   },
   {

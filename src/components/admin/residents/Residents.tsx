@@ -36,7 +36,11 @@ export function Residents() {
       .includes(search);
   });
 
-  function decideRegistration(status: ResidentStatus, declineReason: string | null) {
+  function decideRegistration(
+    status: ResidentStatus,
+    declineReason: string | null,
+    organization: string | null,
+  ) {
     if (!selected || loading) {
       return;
     }
@@ -46,11 +50,26 @@ export function Residents() {
     window.setTimeout(() => {
       setResidents((current) =>
         current.map((resident) =>
-          resident.id === id ? { ...resident, status, declineReason } : resident,
+          resident.id === id ? { ...resident, status, declineReason, organization } : resident,
         ),
       );
       setLoading(false);
       setSelected(null);
+    }, 800);
+  }
+
+  function updateResident(updates: Resident) {
+    if (loading) {
+      return;
+    }
+
+    setLoading(true);
+    window.setTimeout(() => {
+      setResidents((current) =>
+        current.map((resident) => (resident.id === updates.id ? updates : resident)),
+      );
+      setSelected(updates);
+      setLoading(false);
     }, 800);
   }
 
@@ -163,6 +182,7 @@ export function Residents() {
             setSelected(null);
           }}
           onDecide={decideRegistration}
+          onUpdate={updateResident}
         />
       ) : null}
     </div>

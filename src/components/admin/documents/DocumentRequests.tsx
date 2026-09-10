@@ -2,96 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { DocumentRequest, ProcessStatus, VerificationStatus } from "@/types/documentRequest";
+import type { DocumentRequest } from "@/types/documentRequest";
+import {
+  done,
+  initialDocumentRequests,
+  inProcess,
+  pendingVerification,
+  pickedUp,
+  verified,
+} from "@/common/admin/documentRequests";
 import { RequestViewModal } from "./RequestViewModal";
 import { Button } from "@/components/common/Button";
 import { CurrentDateTime } from "@/components/common/CurrentDateTime";
 import { processClass, processLabel, verificationClass } from "@/common/statusStyles";
-
-const pendingVerification = "Pending" satisfies VerificationStatus;
-const verified = "Verified" satisfies VerificationStatus;
-const notStarted = "—" satisfies ProcessStatus;
-const inProcess = "In process" satisfies ProcessStatus;
-const done = "Done" satisfies ProcessStatus;
-const pickedUp = "Picked up" satisfies ProcessStatus;
-
-const initialRequests: DocumentRequest[] = [
-  {
-    id: "DR-001",
-    name: "Maria Santos",
-    type: "Barangay Clearance",
-    date: "Sept. 7, 2026",
-    verification: pendingVerification,
-    process: notStarted,
-    purpose: "Employment requirement",
-    age: 28,
-    sex: "Female",
-    civilStatus: "Single",
-    birthDate: "March 12, 1998",
-    address: "Purok 2, Sitio Maligaya",
-    contact: "0917 555 2101",
-  },
-  {
-    id: "DR-002",
-    name: "Jose Ramirez",
-    type: "Certificate of Residency",
-    date: "Sept. 6, 2026",
-    verification: verified,
-    process: inProcess,
-    purpose: "School enrollment",
-    age: 19,
-    sex: "Male",
-    civilStatus: "Single",
-    birthDate: "July 3, 2007",
-    address: "Purok 4, Riverside",
-    contact: "0918 442 1188",
-  },
-  {
-    id: "DR-003",
-    name: "Ana Villanueva",
-    type: "Indigency Certificate",
-    date: "Sept. 6, 2026",
-    verification: pendingVerification,
-    process: notStarted,
-    purpose: "Medical assistance",
-    age: 41,
-    sex: "Female",
-    civilStatus: "Married",
-    birthDate: "November 21, 1984",
-    address: "Purok 1, Centro",
-    contact: "0922 300 7745",
-  },
-  {
-    id: "DR-004",
-    name: "Carlo Mendoza",
-    type: "Barangay Clearance",
-    date: "Sept. 5, 2026",
-    verification: verified,
-    process: done,
-    purpose: "Local business permit",
-    age: 35,
-    sex: "Male",
-    civilStatus: "Married",
-    birthDate: "January 8, 1991",
-    address: "Purok 5, San Isidro",
-    contact: "0916 889 3340",
-  },
-  {
-    id: "DR-005",
-    name: "Liza Navarro",
-    type: "Certificate of Indigency",
-    date: "Sept. 4, 2026",
-    verification: verified,
-    process: pickedUp,
-    purpose: "Scholarship application",
-    age: 22,
-    sex: "Female",
-    civilStatus: "Single",
-    birthDate: "May 16, 2004",
-    address: "Purok 3, Hillside",
-    contact: "0908 221 6672",
-  },
-];
 
 function getNextAction(request: DocumentRequest) {
   if (request.verification === pendingVerification) {
@@ -126,7 +49,7 @@ function applyNextStep(request: DocumentRequest): DocumentRequest {
 }
 
 export function DocumentRequests() {
-  const [requests, setRequests] = useState(initialRequests);
+  const [requests, setRequests] = useState(initialDocumentRequests);
   const [selected, setSelected] = useState<DocumentRequest | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
