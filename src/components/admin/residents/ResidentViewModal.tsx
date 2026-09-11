@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { declineReasons } from "@/common/admin/declineReasons";
 import { organizations } from "@/common/admin/organizations";
+import { puroks } from "@/common/admin/userOptions";
 import { residentStatusClass } from "@/common/statusStyles";
 import { Button } from "@/components/common/Button";
-import type { Resident, ResidentStatus } from "@/types/resident";
+import { formatResidentFullName, type Resident, type ResidentStatus } from "@/types/resident";
 
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
@@ -60,18 +61,21 @@ function SelectField({
   value,
   placeholder,
   options,
+  required = false,
   onChange,
 }: {
   label: string;
   value: string;
   placeholder: string;
   options: readonly string[];
+  required?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
     <label className="block">
       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-brgy-sidebar">
         {label}
+        {required ? <span className="text-red-600"> *</span> : null}
       </span>
       <span className="relative block">
         <select
@@ -103,12 +107,14 @@ function SelectField({
 export function ResidentViewModal({
   resident,
   loading,
+  updateFailed = false,
   onClose,
   onDecide,
   onUpdate,
 }: {
   resident: Resident;
   loading: boolean;
+  updateFailed?: boolean;
   onClose: () => void;
   onDecide: (status: ResidentStatus, declineReason: string | null, organization: string | null) => void;
   onUpdate: (resident: Resident) => void;
@@ -121,6 +127,7 @@ export function ResidentViewModal({
   const [otherReason, setOtherReason] = useState("");
   const [error, setError] = useState("");
   const [action, setAction] = useState<"register" | "decline" | "update" | null>(null);
+  const wasLoading = useRef(false);
   const isPending = resident.status === "Pending";
   const isRegistered = resident.status === "Registered";
 
@@ -141,8 +148,8 @@ export function ResidentViewModal({
   }
 
   function handleRegister() {
-    if (!organization) {
-      setError("Select an organization. Choose None if the resident has no group.");
+    if (!organization.trim()) {
+      setError("Select an organization before registering.");
       return;
     }
 
@@ -190,7 +197,7 @@ export function ResidentViewModal({
     const birthDate = draft.birthDate.trim();
     const age = Number(draft.age);
 
-    if (!name || !address || !contact || !birthDate || !draft.sex || !draft.civilStatus) {
+    if (!name || !address || !contact || !birthDate || !draft.sex || !draft.civilStatus || !draft.purok) {
       setError("Fill in all resident details.");
       return;
     }
@@ -210,10 +217,12 @@ export function ResidentViewModal({
     onUpdate({
       ...resident,
       name,
+      suffix: draft.suffix.trim(),
       age,
       sex: draft.sex,
       civilStatus: draft.civilStatus,
       birthDate,
+      purok: draft.purok,
       address,
       contact,
       organization: draft.organization,
@@ -221,18 +230,39 @@ export function ResidentViewModal({
   }
 
   useEffect(() => {
-    if (action === "update" && !loading) {
+    if (loading) {
+      wasLoading.current = true;
+      return;
+    }
+
+    if (action === "update" && wasLoading.current) {
+      wasLoading.current = false;
+      setAction(null);
+
+      if (updateFailed) {
+        return;
+      }
+
       setEditing(false);
       setDraft(resident);
-      setAction(null);
     }
-  }, [action, loading, resident]);
+  }, [action, loading, resident, updateFailed]);
 
   function confirmDecline() {
+    if (!selectedReason) {
+      setError("Select a decline reason.");
+      return;
+    }
+
+    if (selectedReason === "Other" && !otherReason.trim()) {
+      setError("Type the reason when you choose Other.");
+      return;
+    }
+
     const reason = resolveDeclineReason();
 
     if (!reason) {
-      setError("Select a decline reason, or type one if you choose Other.");
+      setError("Select a decline reason.");
       return;
     }
 
@@ -247,12 +277,17 @@ export function ResidentViewModal({
         type="button"
         aria-label="Close resident details"
         className="absolute inset-0 bg-black/40"
-        onClick={onClose}
+        onClick={() => {
+          if (!loading) {
+            onClose();
+          }
+        }}
       />
 
-      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="max-h-[90vh] overflow-y-auto">
         <div className="bg-brgy-sidebar px-5 py-4 text-white">
-          <p className="text-sm text-white/80">Resident registration</p>
+          <p className="text-sm text-white/80">Resident registration ID</p>
           <h2 className="mt-1 text-2xl font-semibold">{resident.id}</h2>
           <p className="mt-2 text-sm text-white/80">
             {isRegistered
@@ -268,6 +303,7 @@ export function ResidentViewModal({
               {editing ? (
                 <>
                   <TextField label="Full name" value={draft.name} onChange={(value) => updateDraft("name", value)} />
+                  <TextField label="Suffix" value={draft.suffix} onChange={(value) => updateDraft("suffix", value)} />
                   <TextField
                     label="Age"
                     type="number"
@@ -298,9 +334,14 @@ export function ResidentViewModal({
                     value={draft.contact}
                     onChange={(value) => updateDraft("contact", value)}
                   />
-                  <div className="sm:col-span-2">
-                    <TextField label="Address" value={draft.address} onChange={(value) => updateDraft("address", value)} />
-                  </div>
+                  <TextField label="Address" value={draft.address} onChange={(value) => updateDraft("address", value)} />
+                  <SelectField
+                    label="Purok"
+                    value={draft.purok}
+                    placeholder="Select purok"
+                    options={puroks}
+                    onChange={(value) => updateDraft("purok", value)}
+                  />
                   <div className="rounded-lg border border-[#c5d4f0] px-3 py-2.5">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-brgy-sidebar">Status</p>
                     <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${residentStatusClass[resident.status]}`}>
@@ -314,21 +355,21 @@ export function ResidentViewModal({
                       value={draft.organization ?? ""}
                       placeholder="Select organization"
                       options={organizations}
+                      required
                       onChange={(value) => updateDraft("organization", value)}
                     />
                   </div>
                 </>
               ) : (
                 <>
-                  <InfoField label="Full name" value={resident.name} />
+                  <InfoField label="Full name" value={formatResidentFullName(resident)} />
                   <InfoField label="Age" value={`${resident.age} years old`} />
                   <InfoField label="Sex" value={resident.sex} />
                   <InfoField label="Civil status" value={resident.civilStatus} />
                   <InfoField label="Date of birth" value={resident.birthDate} />
                   <InfoField label="Contact number" value={resident.contact} />
-                  <div className="sm:col-span-2">
-                    <InfoField label="Address" value={resident.address} />
-                  </div>
+                  <InfoField label="Address" value={resident.address} />
+                  <InfoField label="Purok" value={resident.purok} />
                   <div className="rounded-lg border border-[#c5d4f0] px-3 py-2.5">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-brgy-sidebar">Status</p>
                     <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${residentStatusClass[resident.status]}`}>
@@ -361,6 +402,7 @@ export function ResidentViewModal({
                 value={organization}
                 placeholder="Select organization"
                 options={organizations}
+                required
                 onChange={(value) => {
                   setOrganization(value);
                   setError("");
@@ -376,8 +418,6 @@ export function ResidentViewModal({
               <>
                 <Button
                   size="md"
-                  loading={loading && action === "register"}
-                  disabled={loading}
                   onClick={handleRegister}
                 >
                   Register
@@ -385,7 +425,6 @@ export function ResidentViewModal({
                 <Button
                   size="md"
                   variant="secondary"
-                  disabled={loading}
                   onClick={openDeclineModal}
                 >
                   Decline
@@ -393,16 +432,16 @@ export function ResidentViewModal({
               </>
             ) : null}
             {isRegistered && !editing ? (
-              <Button size="md" disabled={loading} onClick={startEditing}>
-                Update
+              <Button size="md" onClick={startEditing}>
+                Edit
               </Button>
             ) : null}
             {isRegistered && editing ? (
               <>
-                <Button size="md" loading={loading && action === "update"} disabled={loading} onClick={handleUpdate}>
+                <Button size="md" onClick={handleUpdate}>
                   Save
                 </Button>
-                <Button size="md" variant="secondary" disabled={loading} onClick={cancelEditing}>
+                <Button size="md" variant="secondary" onClick={cancelEditing}>
                   Cancel
                 </Button>
               </>
@@ -412,6 +451,16 @@ export function ResidentViewModal({
             </Button>
           </div>
         </div>
+        </div>
+        {loading ? (
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
+            <span
+              aria-hidden
+              className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent"
+            />
+            <span className="sr-only">Saving</span>
+          </div>
+        ) : null}
       </div>
 
       {showDeclineModal ? (
@@ -433,6 +482,7 @@ export function ResidentViewModal({
                 value={selectedReason}
                 placeholder="Select a reason"
                 options={declineReasons}
+                required
                 onChange={(value) => {
                   setSelectedReason(value);
                   setError("");
@@ -441,7 +491,7 @@ export function ResidentViewModal({
               {selectedReason === "Other" ? (
                 <label className="block">
                   <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-brgy-sidebar">
-                    Type the reason
+                    Type the reason <span className="text-red-600">*</span>
                   </span>
                   <textarea
                     value={otherReason}

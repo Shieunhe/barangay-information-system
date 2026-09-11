@@ -1,36 +1,29 @@
-import Link from "next/link";
-import { auditTrailEntries } from "@/common/admin/auditTrailEntries";
-import {
-  initialDocumentRequests,
-  pendingVerification,
-  pickedUp,
-  verified,
-} from "@/common/admin/documentRequests";
-import { formatEventDate, formatEventTime, getEventStatus } from "@/common/admin/eventSchedule";
-import { initialEvents } from "@/common/admin/events";
-import { initialResidents } from "@/common/admin/residents";
-import { processLabel } from "@/common/statusStyles";
-import { CurrentDateTime } from "@/components/common/CurrentDateTime";
+"use client";
 
-const statusDot: Record<string, string> = {
-  "—": "bg-zinc-300",
-  "In process": "bg-sky-400",
-  Done: "bg-orange-400",
-  "Picked up": "bg-emerald-400",
-};
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { getResidentUsers, residentUsersQueryKey } from "@/services/users";
+import { residentStatusClass } from "@/common/statusStyles";
+import { CurrentDateTime } from "@/components/common/CurrentDateTime";
+import { formatResidentFullName } from "@/types/resident";
+
+const pendingLimit = 3;
 
 export function Dashboard() {
-  const pendingRequests = initialDocumentRequests.filter(
-    (request) => request.verification === pendingVerification,
-  );
-  const pendingDocuments = pendingRequests.length;
-  const registeredResidents = initialResidents.filter((resident) => resident.status === "Registered").length;
-  const upcomingEvents = initialEvents.filter((event) => getEventStatus(event.date) === "Upcoming");
-  const approvedRequests = initialDocumentRequests.filter(
-    (request) => request.verification === verified && request.process !== pickedUp,
-  ).length;
-  const pickedUpRequests = initialDocumentRequests.filter((request) => request.process === pickedUp).length;
-  const recentActivity = auditTrailEntries.slice(0, 4);
+  const residentsQuery = useQuery({
+    queryKey: residentUsersQueryKey,
+    queryFn: getResidentUsers,
+  });
+
+  const residents = residentsQuery.data ?? [];
+  const registeredResidents = residents.filter((resident) => resident.status === "Registered").length;
+  const latestPendingResidents = residents
+    .filter((resident) => resident.status === "Pending")
+    .sort((left, right) => {
+      const byDate = right.dateFiled.localeCompare(left.dateFiled);
+      return byDate !== 0 ? byDate : right.id - left.id;
+    })
+    .slice(0, pendingLimit);
 
   return (
     <div className="px-6 py-6 text-brgy-ink lg:px-10 lg:py-8">
@@ -49,22 +42,24 @@ export function Dashboard() {
 
       <div className="mb-5 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{pendingDocuments}</p>
+          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">0</p>
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">Pending documents</p>
           <p className="mt-1 text-sm text-neutral-400">Need verification today</p>
         </article>
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{registeredResidents}</p>
+          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">
+            {residentsQuery.isLoading ? "—" : registeredResidents}
+          </p>
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">Registered residents</p>
           <p className="mt-1 text-sm text-neutral-400">People listed in the barangay</p>
         </article>
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{upcomingEvents.length}</p>
+          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">0</p>
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">Upcoming events</p>
           <p className="mt-1 text-sm text-neutral-400">With assigned staff</p>
         </article>
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{auditTrailEntries.length}</p>
+          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">0</p>
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">Audit entries</p>
           <p className="mt-1 text-sm text-neutral-400">Recorded this week</p>
         </article>
@@ -81,7 +76,7 @@ export function Dashboard() {
               View all
             </Link>
           </div>
-          <div className="overflow-x-auto">DAS
+          <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
                 <tr className="border-b border-[#e5e7eb]">
@@ -92,27 +87,11 @@ export function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {pendingRequests.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-sm text-neutral-400">
-                      No pending documents to verify.
-                    </td>
-                  </tr>
-                ) : (
-                  pendingRequests.map((request) => (
-                    <tr key={request.id} className="border-b border-neutral-100 last:border-0">
-                      <td className="py-3 pr-3">
-                        <span className="inline-flex items-center gap-2 text-xs text-neutral-500">
-                          <span className={`h-2.5 w-2.5 rounded-full ${statusDot[request.process]}`} />
-                          {processLabel[request.process]}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-3">{request.name}</td>
-                      <td className="py-3 pr-3">{request.type}</td>
-                      <td className="py-3 text-neutral-500">{request.date}</td>
-                    </tr>
-                  ))
-                )}
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-sm text-neutral-400">
+                    No pending documents to verify.
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -128,23 +107,7 @@ export function Dashboard() {
               View all events
             </Link>
           </div>
-          <ul>
-            {upcomingEvents.length === 0 ? (
-              <li className="py-8 text-center text-sm text-neutral-400">No upcoming event.</li>
-            ) : (
-              upcomingEvents.map((event) => (
-                <li key={event.id} className="flex items-start justify-between gap-4 border-b border-neutral-100 py-3 last:border-0">
-                  <div>
-                    <p className="text-sm font-semibold text-brgy-ink">{event.title}</p>
-                    <p className="mt-1 text-sm text-neutral-400">Assigned to {event.assignee}</p>
-                  </div>
-                  <p className="shrink-0 text-sm text-neutral-400">
-                    {formatEventDate(event.date)}, {formatEventTime(event.time)}
-                  </p>
-                </li>
-              ))
-            )}
-          </ul>
+          <p className="py-8 text-center text-sm text-neutral-400">No upcoming event.</p>
         </section>
       </div>
 
@@ -159,40 +122,43 @@ export function Dashboard() {
               View all trails
             </Link>
           </div>
-          <ul>
-            {recentActivity.map((entry) => (
-              <li key={entry.id} className="flex items-start justify-between gap-4 border-b border-neutral-100 py-3 last:border-0">
-                <div>
-                  <p className="text-sm font-semibold text-brgy-ink">{entry.action}</p>
-                  <p className="mt-1 text-sm text-neutral-400">{entry.staff}</p>
-                </div>
-                <p className="shrink-0 text-sm text-neutral-400">
-                  {entry.date}, {entry.time}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <p className="py-8 text-center text-sm text-neutral-400">No recent activity.</p>
         </section>
 
         <section className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <div className="mb-6">
-            <h2 className="text-base font-bold text-[#2c3e50]">Request status</h2>
-            <p className="mt-1 text-sm text-neutral-400">How document requests stand this week</p>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-[#2c3e50]">Pending residents</h2>
+              <p className="mt-1 text-sm text-neutral-400">Latest people waiting to be registered</p>
+            </div>
+            <Link href="/admin/residents" className="shrink-0 text-sm text-neutral-400 hover:text-brgy-sidebar">
+              View all
+            </Link>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{pendingDocuments}</p>
-              <p className="mt-2 text-sm font-semibold text-black">Pending</p>
-            </div>
-            <div>
-              <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{approvedRequests}</p>
-              <p className="mt-2 text-sm font-semibold text-black">Approved</p>
-            </div>
-            <div>
-              <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{pickedUpRequests}</p>
-              <p className="mt-2 text-sm font-semibold text-black">Picked up</p>
-            </div>
-          </div>
+          {residentsQuery.isLoading ? (
+            <p className="py-8 text-center text-sm text-neutral-400">Loading residents...</p>
+          ) : residentsQuery.error ? (
+            <p className="py-8 text-center text-sm text-red-600">Could not load residents from Firestore.</p>
+          ) : latestPendingResidents.length === 0 ? (
+            <p className="py-8 text-center text-sm text-neutral-400">No pending residents.</p>
+          ) : (
+            <ul>
+              {latestPendingResidents.map((resident) => (
+                <li key={resident.userId} className="flex items-start justify-between gap-4 border-b border-neutral-100 py-3 last:border-0">
+                  <div>
+                    <p className="text-sm font-semibold text-brgy-ink">{formatResidentFullName(resident)}</p>
+                    <p className="mt-1 text-sm text-neutral-400">{[resident.address, resident.purok].filter(Boolean).join(", ")}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${residentStatusClass[resident.status]}`}>
+                      {resident.status}
+                    </span>
+                    <p className="mt-2 text-sm text-neutral-400">{resident.dateFiled}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </div>

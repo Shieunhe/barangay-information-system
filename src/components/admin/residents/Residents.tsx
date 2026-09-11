@@ -1,23 +1,92 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { initialResidents } from "@/common/admin/residents";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { decideResident, getResidentUsers, residentUsersQueryKey, updateResident } from "@/services/users";
 import { residentStatusClass } from "@/common/statusStyles";
 import { ResidentViewModal } from "@/components/admin/residents/ResidentViewModal";
 import { Button } from "@/components/common/Button";
+import { Snackbar } from "@/components/common/Snackbar";
 import { CurrentDateTime } from "@/components/common/CurrentDateTime";
-import type { Resident, ResidentStatus } from "@/types/resident";
+import { formatResidentFullName, type Resident, type ResidentStatus } from "@/types/resident";
 
 const pendingStatus = "Pending" satisfies ResidentStatus;
 const registeredStatus = "Registered" satisfies ResidentStatus;
 const notRegisteredStatus = "Not registered" satisfies ResidentStatus;
 
 export function Residents() {
-  const [residents, setResidents] = useState(initialResidents);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Resident | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+
+  const residentsQuery = useQuery({
+    queryKey: residentUsersQueryKey,
+    queryFn: getResidentUsers,
+  });
+
+  const decideMutation = useMutation({
+    mutationFn: ({
+      userId,
+      status,
+      declineReason,
+      organization,
+    }: {
+      userId: string;
+      status: ResidentStatus;
+      declineReason: string | null;
+      organization: string | null;
+    }) => decideResident(userId, status, declineReason, organization),
+    onSuccess: (_result, { userId, status, declineReason, organization }) => {
+      queryClient.setQueryData<Resident[]>(residentUsersQueryKey, (current) =>
+        (current ?? []).map((resident) =>
+          resident.userId === userId ? { ...resident, status, declineReason, organization } : resident,
+        ),
+      );
+      setSnackbar({
+        message: status === registeredStatus ? "Resident registered." : "Resident declined.",
+        variant: "success",
+      });
+      setSelected(null);
+    },
+    onError: (_error, { status }) => {
+      setSnackbar({
+        message: status === registeredStatus ? "Failed to register this resident." : "Failed to decline this resident.",
+        variant: "error",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (updates: Resident) => updateResident(updates),
+    onSuccess: (_result, updates) => {
+      queryClient.setQueryData<Resident[]>(residentUsersQueryKey, (current) =>
+        (current ?? []).map((resident) => (resident.userId === updates.userId ? updates : resident)),
+      );
+      setSelected(updates);
+      setSnackbar({ message: "Resident details updated.", variant: "success" });
+    },
+    onError: () => {
+      setSnackbar({ message: "Failed to update these details.", variant: "error" });
+    },
+  });
+
+  useEffect(() => {
+    if (!snackbar) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setSnackbar(null), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [snackbar]);
+
+  const residents = residentsQuery.data ?? [];
+  const saving = decideMutation.isPending || updateMutation.isPending;
+  const loadError =
+    residentsQuery.error || decideMutation.error || updateMutation.error
+      ? "Could not load or update residents in Firestore."
+      : "";
 
   const totalResidents = residents.filter((resident) => resident.status === registeredStatus).length;
   const pendingCount = residents.filter((resident) => resident.status === pendingStatus).length;
@@ -30,48 +99,11 @@ export function Residents() {
       return true;
     }
 
-    return [resident.id, resident.name, resident.address, resident.dateFiled, resident.status]
+    return [resident.id, formatResidentFullName(resident), resident.purok, resident.address, resident.dateFiled, resident.status]
       .join(" ")
       .toLowerCase()
       .includes(search);
   });
-
-  function decideRegistration(
-    status: ResidentStatus,
-    declineReason: string | null,
-    organization: string | null,
-  ) {
-    if (!selected || loading) {
-      return;
-    }
-
-    const id = selected.id;
-    setLoading(true);
-    window.setTimeout(() => {
-      setResidents((current) =>
-        current.map((resident) =>
-          resident.id === id ? { ...resident, status, declineReason, organization } : resident,
-        ),
-      );
-      setLoading(false);
-      setSelected(null);
-    }, 800);
-  }
-
-  function updateResident(updates: Resident) {
-    if (loading) {
-      return;
-    }
-
-    setLoading(true);
-    window.setTimeout(() => {
-      setResidents((current) =>
-        current.map((resident) => (resident.id === updates.id ? updates : resident)),
-      );
-      setSelected(updates);
-      setLoading(false);
-    }, 800);
-  }
 
   return (
     <div className="px-6 py-6 text-brgy-ink lg:px-10 lg:py-8">
@@ -139,35 +171,48 @@ export function Residents() {
               </tr>
             </thead>
             <tbody>
-              {visibleResidents.length === 0 ? (
+              {residentsQuery.isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-8 text-center text-sm text-neutral-400">
+                    Loading residents...
+                  </td>
+                </tr>
+              ) : loadError ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-8 text-center text-sm text-red-600">
+                    {loadError}
+                  </td>
+                </tr>
+              ) : visibleResidents.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-5 py-8 text-center text-sm text-neutral-400">
                     No matching residents.
                   </td>
                 </tr>
-              ) : null}
-              {visibleResidents.map((resident) => (
-                <tr key={resident.id} className="border-b border-neutral-200 last:border-0">
-                  <td className="px-5 py-4 font-medium">{resident.id}</td>
-                  <td className="px-5 py-4">{resident.name}</td>
-                  <td className="px-5 py-4">{resident.address}</td>
-                  <td className="px-5 py-4">{resident.dateFiled}</td>
-                  <td className="px-5 py-4">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${residentStatusClass[resident.status]}`}>
-                      {resident.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <Button
-                      className="w-[6.75rem]"
-                      variant={resident.status === pendingStatus ? "primary" : "secondary"}
-                      onClick={() => setSelected(resident)}
-                    >
-                      View
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              ) : (
+                visibleResidents.map((resident) => (
+                  <tr key={resident.userId} className="border-b border-neutral-200 last:border-0">
+                    <td className="px-5 py-4 font-medium">{resident.id}</td>
+                    <td className="px-5 py-4">{formatResidentFullName(resident)}</td>
+                    <td className="px-5 py-4">{[resident.address, resident.purok].filter(Boolean).join(", ")}</td>
+                    <td className="px-5 py-4">{resident.dateFiled}</td>
+                    <td className="px-5 py-4">
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${residentStatusClass[resident.status]}`}>
+                        {resident.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <Button
+                        className="w-[6.75rem]"
+                        variant={resident.status === pendingStatus ? "primary" : "secondary"}
+                        onClick={() => setSelected(resident)}
+                      >
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -176,15 +221,37 @@ export function Residents() {
       {selected ? (
         <ResidentViewModal
           resident={selected}
-          loading={loading}
+          loading={saving}
+          updateFailed={updateMutation.isError}
           onClose={() => {
-            setLoading(false);
+            decideMutation.reset();
+            updateMutation.reset();
             setSelected(null);
           }}
-          onDecide={decideRegistration}
-          onUpdate={updateResident}
+          onDecide={(status, declineReason, organization) => {
+            if (saving) {
+              return;
+            }
+
+            decideMutation.mutate({
+              userId: selected.userId,
+              status,
+              declineReason,
+              organization,
+            });
+          }}
+          onUpdate={(updates) => {
+            if (saving) {
+              return;
+            }
+
+            updateMutation.reset();
+            updateMutation.mutate(updates);
+          }}
         />
       ) : null}
+
+      {snackbar ? <Snackbar message={snackbar.message} variant={snackbar.variant} /> : null}
     </div>
   );
 }
