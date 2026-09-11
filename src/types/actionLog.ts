@@ -1,6 +1,5 @@
 export type ActionLog = {
   id: number;
-  uid: string;
   resident_name: string;
   module: string;
   action: string;

@@ -129,7 +129,7 @@ export async function decideResident(
   if (status === "Registered" && organization) {
     await createUserOrganization(userId, organization);
     await createActionLog({
-      uid: userId,
+      userId,
       residentName,
       module: "residents",
       action: "Registered resident",
@@ -139,7 +139,7 @@ export async function decideResident(
   }
 
   await createActionLog({
-    uid: userId,
+    userId,
     residentName,
     module: "residents",
     action: "Declined resident",
@@ -216,7 +216,7 @@ export async function updateResident(resident: Resident) {
   ].filter((change): change is string => Boolean(change));
 
   await createActionLog({
-    uid: resident.userId,
+    userId: resident.userId,
     residentName: nextName,
     module: "residents",
     action: "Updated resident",

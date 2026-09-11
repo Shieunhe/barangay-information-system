@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs } from "firebase/firestore";
+import { collection, doc, getDocs, setDoc } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import type { ActionLog } from "@/types/actionLog";
 import type { AuditModule, AuditTrailEntry } from "@/types/auditTrail";
@@ -61,7 +61,7 @@ function toAuditTrailEntry(docId: string, log: ActionLog): AuditTrailEntry {
 }
 
 export async function createActionLog(fields: {
-  uid: string;
+  userId: string;
   residentName: string;
   module: string;
   action: string;
@@ -71,7 +71,6 @@ export async function createActionLog(fields: {
   const id = await nextActionLogId();
   const record: ActionLog = {
     id,
-    uid: fields.uid,
     resident_name: fields.residentName,
     module: fields.module,
     action: fields.action,
@@ -81,7 +80,7 @@ export async function createActionLog(fields: {
     update_date: now,
   };
 
-  await addDoc(collection(getFirebaseDb(), "action_logs"), record);
+  await setDoc(doc(getFirebaseDb(), "action_logs", fields.userId), record);
 
   return record;
 }
