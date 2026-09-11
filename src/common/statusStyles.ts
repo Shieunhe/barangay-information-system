@@ -15,6 +15,7 @@ export const processClass: Record<ProcessStatus, string> = {
 };
 
 export const residentStatusClass: Record<ResidentStatus, string> = {
+  "Account verification": "bg-sky-100 text-sky-800",
   Pending: "bg-amber-100 text-amber-800",
   Registered: "bg-emerald-100 text-emerald-800",
   "Not registered": "bg-zinc-100 text-zinc-600",

@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { actionLogsQueryKey } from "@/services/actionLogs";
-import { decideResident, getResidentUsers, residentUsersQueryKey, updateResident } from "@/services/users";
+import { useDecideResident, useResidentUsers, useUpdateResident } from "@/services/users";
+import { toPhpDate, toPhpDateTime, toPhpTime } from "@/common/phpTime";
 import { residentStatusClass } from "@/common/statusStyles";
 import { ResidentViewModal } from "@/components/admin/residents/ResidentViewModal";
 import { Button } from "@/components/common/Button";
@@ -19,71 +18,13 @@ const notRegisteredStatus = "Not registered" satisfies ResidentStatus;
 const pageSize = 10;
 
 export function Residents() {
-  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Resident | null>(null);
   const [snackbar, setSnackbar] = useState<{ message: string; variant: "success" | "error" } | null>(null);
-
-  const residentsQuery = useQuery({
-    queryKey: residentUsersQueryKey,
-    queryFn: getResidentUsers,
-  });
-
-  const decideMutation = useMutation({
-    mutationFn: ({
-      userId,
-      status,
-      declineReason,
-      organization,
-    }: {
-      userId: string;
-      status: ResidentStatus;
-      declineReason: string | null;
-      organization: string | null;
-    }) =>
-      decideResident(
-        userId,
-        status,
-        declineReason,
-        organization,
-        selected ? formatResidentFullName(selected) : "",
-      ),
-    onSuccess: (_result, { userId, status, declineReason, organization }) => {
-      queryClient.setQueryData<Resident[]>(residentUsersQueryKey, (current) =>
-        (current ?? []).map((resident) =>
-          resident.userId === userId ? { ...resident, status, declineReason, organization } : resident,
-        ),
-      );
-      queryClient.invalidateQueries({ queryKey: actionLogsQueryKey });
-      setSnackbar({
-        message: status === registeredStatus ? "Resident registered." : "Resident declined.",
-        variant: "success",
-      });
-      setSelected(null);
-    },
-    onError: (_error, { status }) => {
-      setSnackbar({
-        message: status === registeredStatus ? "Failed to register this resident." : "Failed to decline this resident.",
-        variant: "error",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (updates: Resident) => updateResident(updates),
-    onSuccess: (_result, updates) => {
-      queryClient.setQueryData<Resident[]>(residentUsersQueryKey, (current) =>
-        (current ?? []).map((resident) => (resident.userId === updates.userId ? updates : resident)),
-      );
-      setSelected(updates);
-      queryClient.invalidateQueries({ queryKey: actionLogsQueryKey });
-      setSnackbar({ message: "Resident details updated.", variant: "success" });
-    },
-    onError: () => {
-      setSnackbar({ message: "Failed to update these details.", variant: "error" });
-    },
-  });
+  const residentsQuery = useResidentUsers();
+  const decideMutation = useDecideResident();
+  const updateMutation = useUpdateResident();
 
   useEffect(() => {
     if (!snackbar) {
@@ -113,7 +54,15 @@ export function Residents() {
       return true;
     }
 
-    return [resident.id, formatResidentFullName(resident), resident.purok, resident.address, resident.dateFiled, resident.status]
+    return [
+      resident.id,
+      formatResidentFullName(resident),
+      resident.purok,
+      resident.address,
+      resident.dateFiled,
+      toPhpDateTime(resident.dateFiled),
+      resident.status,
+    ]
       .join(" ")
       .toLowerCase()
       .includes(search);
@@ -215,7 +164,10 @@ export function Residents() {
                     <td className="px-5 py-4 font-medium">{resident.id}</td>
                     <td className="px-5 py-4">{formatResidentFullName(resident)}</td>
                     <td className="px-5 py-4">{[resident.address, resident.purok].filter(Boolean).join(", ")}</td>
-                    <td className="px-5 py-4">{resident.dateFiled}</td>
+                    <td className="px-5 py-4">
+                      <p className="font-medium">{toPhpDate(resident.dateFiled)}</p>
+                      <p className="text-xs text-neutral-500">{toPhpTime(resident.dateFiled)}</p>
+                    </td>
                     <td className="px-5 py-4">
                       <span className={`rounded-full px-3 py-1 text-xs font-semibold ${residentStatusClass[resident.status]}`}>
                         {resident.status}
@@ -254,12 +206,33 @@ export function Residents() {
               return;
             }
 
-            decideMutation.mutate({
-              userId: selected.userId,
-              status,
-              declineReason,
-              organization,
-            });
+            decideMutation.mutate(
+              {
+                userId: selected.userId,
+                status,
+                declineReason,
+                organization,
+                residentName: formatResidentFullName(selected),
+              },
+              {
+                onSuccess: (_result, { status }) => {
+                  setSnackbar({
+                    message: status === registeredStatus ? "Resident registered." : "Resident declined.",
+                    variant: "success",
+                  });
+                  setSelected(null);
+                },
+                onError: (_error, { status }) => {
+                  setSnackbar({
+                    message:
+                      status === registeredStatus
+                        ? "Failed to register this resident."
+                        : "Failed to decline this resident.",
+                    variant: "error",
+                  });
+                },
+              },
+            );
           }}
           onUpdate={(updates) => {
             if (saving) {
@@ -267,7 +240,15 @@ export function Residents() {
             }
 
             updateMutation.reset();
-            updateMutation.mutate(updates);
+            updateMutation.mutate(updates, {
+              onSuccess: (_result, nextResident) => {
+                setSelected(nextResident);
+                setSnackbar({ message: "Resident details updated.", variant: "success" });
+              },
+              onError: () => {
+                setSnackbar({ message: "Failed to update these details.", variant: "error" });
+              },
+            });
           }}
         />
       ) : null}

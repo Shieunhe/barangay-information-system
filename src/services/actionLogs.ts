@@ -1,4 +1,8 @@
-import { collection, doc, getDocs, setDoc } from "firebase/firestore";
+"use client";
+
+import { addDoc, collection, doc, getDocs, setDoc } from "firebase/firestore";
+import { useQuery } from "@tanstack/react-query";
+import { toPhpDate, toPhpTime } from "@/common/phpTime";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import type { ActionLog } from "@/types/actionLog";
 import type { AuditModule, AuditTrailEntry } from "@/types/auditTrail";
@@ -7,28 +11,24 @@ export const actionLogsQueryKey = ["action_logs"] as const;
 
 const defaultStaff = "Administration";
 
+function entriesCollection(userId: string) {
+  return collection(getFirebaseDb(), "action_logs", userId, "entries");
+}
+
 async function nextActionLogId() {
-  const snapshot = await getDocs(collection(getFirebaseDb(), "action_logs"));
+  const parents = await getDocs(collection(getFirebaseDb(), "action_logs"));
+  let maxId = 0;
 
-  return snapshot.docs.reduce((max, entry) => Math.max(max, Number(entry.data().id) || 0), 0) + 1;
-}
+  for (const parent of parents.docs) {
+    maxId = Math.max(maxId, Number(parent.data().id) || 0);
+    const entries = await getDocs(collection(parent.ref, "entries"));
 
-function formatLogDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "Asia/Manila",
-  }).format(new Date(value));
-}
+    for (const entry of entries.docs) {
+      maxId = Math.max(maxId, Number(entry.data().id) || 0);
+    }
+  }
 
-function formatLogTime(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "Asia/Manila",
-  }).format(new Date(value));
+  return maxId + 1;
 }
 
 function toAuditModule(module: string): AuditModule {
@@ -50,8 +50,8 @@ function toAuditModule(module: string): AuditModule {
 function toAuditTrailEntry(docId: string, log: ActionLog): AuditTrailEntry {
   return {
     id: docId,
-    date: formatLogDate(log.create_date),
-    time: formatLogTime(log.create_date),
+    date: toPhpDate(log.create_date),
+    time: toPhpTime(log.create_date),
     staff: log.staff,
     module: toAuditModule(log.module),
     action: log.action,
@@ -71,6 +71,7 @@ export async function createActionLog(fields: {
   const id = await nextActionLogId();
   const record: ActionLog = {
     id,
+    user_id: fields.userId,
     resident_name: fields.residentName,
     module: fields.module,
     action: fields.action,
@@ -80,16 +81,47 @@ export async function createActionLog(fields: {
     update_date: now,
   };
 
-  await setDoc(doc(getFirebaseDb(), "action_logs", fields.userId), record);
+  await setDoc(
+    doc(getFirebaseDb(), "action_logs", fields.userId),
+    { user_id: fields.userId },
+    { merge: true },
+  );
+  await addDoc(entriesCollection(fields.userId), record);
 
   return record;
 }
 
 export async function getActionLogs(): Promise<AuditTrailEntry[]> {
-  const snapshot = await getDocs(collection(getFirebaseDb(), "action_logs"));
+  const parents = await getDocs(collection(getFirebaseDb(), "action_logs"));
+  const entries: { id: string; log: ActionLog }[] = [];
 
-  return snapshot.docs
-    .map((entry) => ({ entry, log: entry.data() as ActionLog }))
+  for (const parent of parents.docs) {
+    const nested = await getDocs(collection(parent.ref, "entries"));
+
+    if (!nested.empty) {
+      for (const entry of nested.docs) {
+        entries.push({ id: entry.id, log: entry.data() as ActionLog });
+      }
+      continue;
+    }
+
+    const log = parent.data() as ActionLog;
+
+    if (log.action) {
+      entries.push({ id: parent.id, log });
+    }
+  }
+
+  return entries
     .sort((left, right) => right.log.create_date.localeCompare(left.log.create_date))
-    .map(({ entry, log }) => toAuditTrailEntry(entry.id, log));
+    .map(({ id, log }) => toAuditTrailEntry(id, log));
+}
+
+export function useActionLogs() {
+  return useQuery({
+    queryKey: actionLogsQueryKey,
+    queryFn: getActionLogs,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
 }

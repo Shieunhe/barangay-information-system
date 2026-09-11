@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { declineReasons } from "@/common/admin/declineReasons";
 import { organizations } from "@/common/admin/organizations";
 import { puroks } from "@/common/admin/userOptions";
+import { toPhpDateTime } from "@/common/phpTime";
+import { formatPhMobile, isPhMobile } from "@/common/phMobile";
 import { residentStatusClass } from "@/common/statusStyles";
 import { Button } from "@/components/common/Button";
 import { formatResidentFullName, type Resident, type ResidentStatus } from "@/types/resident";
@@ -34,11 +36,15 @@ function TextField({
   label,
   value,
   type = "text",
+  inputMode,
+  maxLength,
   onChange,
 }: {
   label: string;
   value: string;
   type?: string;
+  inputMode?: "numeric" | "tel" | "text";
+  maxLength?: number;
   onChange: (value: string) => void;
 }) {
   return (
@@ -48,6 +54,8 @@ function TextField({
       </span>
       <input
         type={type}
+        inputMode={inputMode}
+        maxLength={maxLength}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="w-full rounded-lg border border-[#c5d4f0] bg-white px-3 py-2.5 text-sm text-brgy-ink outline-none"
@@ -128,7 +136,7 @@ export function ResidentViewModal({
   const [error, setError] = useState("");
   const [action, setAction] = useState<"register" | "decline" | "update" | null>(null);
   const wasLoading = useRef(false);
-  const isPending = resident.status === "Pending";
+  const isPending = resident.status === "Pending" || resident.status === "Account verification";
   const isRegistered = resident.status === "Registered";
 
   function updateDraft<K extends keyof Resident>(key: K, value: Resident[K]) {
@@ -199,6 +207,11 @@ export function ResidentViewModal({
 
     if (!name || !address || !contact || !birthDate || !draft.sex || !draft.civilStatus || !draft.purok) {
       setError("Fill in all resident details.");
+      return;
+    }
+
+    if (!isPhMobile(contact)) {
+      setError("Contact number must be 11 digits and start with 09.");
       return;
     }
 
@@ -331,8 +344,11 @@ export function ResidentViewModal({
                   />
                   <TextField
                     label="Contact number"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={11}
                     value={draft.contact}
-                    onChange={(value) => updateDraft("contact", value)}
+                    onChange={(value) => updateDraft("contact", formatPhMobile(value))}
                   />
                   <TextField label="Address" value={draft.address} onChange={(value) => updateDraft("address", value)} />
                   <SelectField
@@ -348,7 +364,7 @@ export function ResidentViewModal({
                       {resident.status}
                     </span>
                   </div>
-                  <InfoField label="Date filed" value={resident.dateFiled} />
+                  <InfoField label="Date filed" value={toPhpDateTime(resident.dateFiled)} />
                   <div className="sm:col-span-2">
                     <SelectField
                       label="Organization"
@@ -376,7 +392,7 @@ export function ResidentViewModal({
                       {resident.status}
                     </span>
                   </div>
-                  <InfoField label="Date filed" value={resident.dateFiled} />
+                  <InfoField label="Date filed" value={toPhpDateTime(resident.dateFiled)} />
                   {!isPending && resident.organization ? (
                     <div className="sm:col-span-2">
                       <InfoField label="Organization" value={resident.organization} />

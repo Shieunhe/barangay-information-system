@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { actionLogsQueryKey, getActionLogs } from "@/services/actionLogs";
-import { getResidentUsers, residentUsersQueryKey } from "@/services/users";
+import { useActionLogs } from "@/services/actionLogs";
+import { useResidentUsers } from "@/services/users";
+import { toPhpDateTime } from "@/common/phpTime";
 import { residentStatusClass } from "@/common/statusStyles";
 import { CurrentDateTime } from "@/components/common/CurrentDateTime";
 import { formatResidentFullName } from "@/types/resident";
@@ -11,16 +11,8 @@ import { formatResidentFullName } from "@/types/resident";
 const pendingLimit = 3;
 
 export function Dashboard() {
-  const residentsQuery = useQuery({
-    queryKey: residentUsersQueryKey,
-    queryFn: getResidentUsers,
-  });
-  const logsQuery = useQuery({
-    queryKey: actionLogsQueryKey,
-    queryFn: getActionLogs,
-    staleTime: 0,
-    refetchOnMount: true,
-  });
+  const residentsQuery = useResidentUsers();
+  const logsQuery = useActionLogs();
 
   const residents = residentsQuery.data ?? [];
   const registeredResidents = residents.filter((resident) => resident.status === "Registered").length;
@@ -183,7 +175,7 @@ export function Dashboard() {
                     <span className={`rounded-full px-3 py-1 text-xs font-semibold ${residentStatusClass[resident.status]}`}>
                       {resident.status}
                     </span>
-                    <p className="mt-2 text-sm text-neutral-400">{resident.dateFiled}</p>
+                    <p className="mt-2 text-sm text-neutral-400">{toPhpDateTime(resident.dateFiled)}</p>
                   </div>
                 </li>
               ))}

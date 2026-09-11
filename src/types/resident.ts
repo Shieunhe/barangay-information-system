@@ -1,4 +1,4 @@
-export type ResidentStatus = "Pending" | "Registered" | "Not registered";
+export type ResidentStatus = "Account verification" | "Pending" | "Registered" | "Not registered";
 
 export function formatResidentFullName(resident: Pick<Resident, "name" | "suffix">) {
   const suffix = resident.suffix?.trim();
@@ -8,6 +8,7 @@ export function formatResidentFullName(resident: Pick<Resident, "name" | "suffix
 export type Resident = {
   id: number;
   userId: string;
+  user_id: string;
   name: string;
   suffix: string;
   age: number;
