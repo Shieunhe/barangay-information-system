@@ -28,9 +28,6 @@ export function AuditTrail() {
   });
 
   const entries = logsQuery.data ?? [];
-  const documentActions = entries.filter((entry) => entry.module === "Documents").length;
-  const eventActions = entries.filter((entry) => entry.module === "Events").length;
-  const residentActions = entries.filter((entry) => entry.module === "Residents").length;
   const search = query.trim().toLowerCase();
   const visibleEntries = entries.filter((entry) => {
     if (!search) {
@@ -63,25 +60,6 @@ export function AuditTrail() {
         <p className="mt-2 max-w-3xl text-base text-neutral-600">
           A record of office actions: document reviews, event posts, and changes to resident records.
         </p>
-      </div>
-
-      <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{entries.length}</p>
-          <p className="mt-1.5 text-[0.9rem] font-bold text-black">All Entries</p>
-        </article>
-        <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{documentActions}</p>
-          <p className="mt-1.5 text-[0.9rem] font-bold text-black">Document Actions</p>
-        </article>
-        <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{eventActions}</p>
-          <p className="mt-1.5 text-[0.9rem] font-bold text-black">Event Posts</p>
-        </article>
-        <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{residentActions}</p>
-          <p className="mt-1.5 text-[0.9rem] font-bold text-black">Resident Records</p>
-        </article>
       </div>
 
       <label className="mb-4 flex items-center gap-3 rounded-[10px] bg-white px-4 py-3 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
