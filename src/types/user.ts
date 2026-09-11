@@ -1,9 +1,10 @@
 export const USER_ROLE = 1;
 
-export type UserStatus = "pending" | "registered" | "not registered";
+export type UserStatus = "account verification" | "pending" | "registered" | "not registered";
 
 export type Users = {
   id: number;
+  user_id: string;
   role: typeof USER_ROLE;
   first_name: string;
   last_name: string;

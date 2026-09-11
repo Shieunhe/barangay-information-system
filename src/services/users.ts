@@ -1,6 +1,9 @@
+"use client";
+
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getFirebaseDb } from "@/lib/firebase/client";
-import { createActionLog } from "@/services/actionLogs";
+import { actionLogsQueryKey, createActionLog } from "@/services/actionLogs";
 import { createUserOrganization, getUserOrganizationsByUid, updateUserOrganization } from "@/services/userOrganizations";
 import { formatResidentFullName, type Resident, type ResidentStatus } from "@/types/resident";
 import { USER_ROLE, type Users, type UserStatus } from "@/types/user";
@@ -25,6 +28,10 @@ function toResidentStatus(status: UserStatus): ResidentStatus {
     return "Not registered";
   }
 
+  if (status === "account verification") {
+    return "Account verification";
+  }
+
   return "Pending";
 }
 
@@ -37,6 +44,10 @@ function toUserStatus(status: ResidentStatus): UserStatus {
     return "not registered";
   }
 
+  if (status === "Account verification") {
+    return "account verification";
+  }
+
   return "pending";
 }
 
@@ -44,10 +55,15 @@ function createSixDigitDocumentId() {
   return Array.from({ length: 6 }, () => digitsForDocumentId[Math.floor(Math.random() * digitsForDocumentId.length)]).join("");
 }
 
-function toResident(userId: string, user: Users): Resident {
+function residentCode(authUid: string, user?: Pick<Users, "user_id"> | null) {
+  return user?.user_id || authUid;
+}
+
+function toResident(authUid: string, user: Users): Resident {
   return {
     id: user.id,
-    userId,
+    userId: authUid,
+    user_id: residentCode(authUid, user),
     name: formatName(user),
     suffix: user.suffix?.trim() ?? "",
     age: user.age,
@@ -70,15 +86,15 @@ async function nextResidentId() {
   return snapshot.docs.reduce((max, entry) => Math.max(max, Number(entry.data().id) || 0), 0) + 1;
 }
 
-async function nextUserDocRef() {
-  const db = getFirebaseDb();
+async function nextUniqueUserId() {
+  const usersRef = collection(getFirebaseDb(), "users");
 
   for (;;) {
-    const userId = createSixDigitDocumentId();
-    const userRef = doc(db, "users", userId);
+    const user_id = createSixDigitDocumentId();
+    const taken = await getDocs(query(usersRef, where("user_id", "==", user_id)));
 
-    if (!(await getDoc(userRef)).exists()) {
-      return userRef;
+    if (taken.empty) {
+      return user_id;
     }
   }
 }
@@ -91,26 +107,34 @@ export async function getResidentUsers(): Promise<Resident[]> {
 
   return snapshot.docs
     .map((entry) => {
-      const resident = toResident(entry.id, entry.data() as Users);
+      const user = entry.data() as Users;
+      const resident = toResident(entry.id, user);
       return {
         ...resident,
-        organization: organizations.get(entry.id)?.organization ?? null,
+        organization: organizations.get(resident.user_id)?.organization ?? null,
       };
     })
     .sort((left, right) => left.id - right.id);
 }
 
-export async function createResidentUser(fields: Omit<Users, "id" | "role">) {
-  const userRef = await nextUserDocRef();
+export async function createResidentUser(authUid: string, fields: Omit<Users, "id" | "role" | "user_id">) {
+  const userRef = doc(getFirebaseDb(), "users", authUid);
+
+  if ((await getDoc(userRef)).exists()) {
+    throw new Error("A profile already exists for this account.");
+  }
+
+  const user_id = await nextUniqueUserId();
   const id = await nextResidentId();
 
   await setDoc(userRef, {
     id,
+    user_id,
     role: USER_ROLE,
     ...fields,
   });
 
-  return { id, userId: userRef.id };
+  return { id, userId: authUid, user_id };
 }
 
 export async function decideResident(
@@ -120,16 +144,20 @@ export async function decideResident(
   organization: string | null,
   residentName: string,
 ) {
-  await updateDoc(doc(getFirebaseDb(), "users", userId), {
+  const userRef = doc(getFirebaseDb(), "users", userId);
+  const existing = (await getDoc(userRef)).data() as Users | undefined;
+  const userCode = residentCode(userId, existing);
+
+  await updateDoc(userRef, {
     status: toUserStatus(status),
     decline_reason: declineReason ?? "",
     update_date: new Date().toISOString(),
   });
 
   if (status === "Registered" && organization) {
-    await createUserOrganization(userId, organization);
+    await createUserOrganization(userCode, organization);
     await createActionLog({
-      userId,
+      userId: userCode,
       residentName,
       module: "residents",
       action: "Registered resident",
@@ -139,7 +167,7 @@ export async function decideResident(
   }
 
   await createActionLog({
-    userId,
+    userId: userCode,
     residentName,
     module: "residents",
     action: "Declined resident",
@@ -167,8 +195,9 @@ function describeChange(from: string, to: string) {
 export async function updateResident(resident: Resident) {
   const userRef = doc(getFirebaseDb(), "users", resident.userId);
   const existing = (await getDoc(userRef)).data() as Users | undefined;
+  const userCode = residentCode(resident.userId, existing ?? resident);
   const organizations = await getUserOrganizationsByUid();
-  const previousOrganization = organizations.get(resident.userId)?.organization ?? "";
+  const previousOrganization = organizations.get(userCode)?.organization ?? "";
   const { first_name, middle_name, last_name } = splitFullName(resident.name);
   const previousName = existing
     ? formatResidentFullName({
@@ -180,6 +209,7 @@ export async function updateResident(resident: Resident) {
 
   await setDoc(userRef, {
     id: existing?.id ?? resident.id,
+    user_id: userCode,
     role: existing?.role ?? USER_ROLE,
     first_name,
     middle_name,
@@ -200,7 +230,7 @@ export async function updateResident(resident: Resident) {
   } satisfies Users);
 
   if (resident.status === "Registered" && resident.organization) {
-    await updateUserOrganization(resident.userId, resident.organization);
+    await updateUserOrganization(userCode, resident.organization);
   }
 
   const changes = [
@@ -216,7 +246,7 @@ export async function updateResident(resident: Resident) {
   ].filter((change): change is string => Boolean(change));
 
   await createActionLog({
-    userId: resident.userId,
+    userId: userCode,
     residentName: nextName,
     module: "residents",
     action: "Updated resident",
@@ -224,5 +254,51 @@ export async function updateResident(resident: Resident) {
       changes.length > 0
         ? `Updated ${nextName} ${changes.join(", ")}.`
         : `Updated ${nextName}.`,
+  });
+}
+
+export type DecideResidentInput = {
+  userId: string;
+  status: ResidentStatus;
+  declineReason: string | null;
+  organization: string | null;
+  residentName: string;
+};
+
+export function useResidentUsers() {
+  return useQuery({
+    queryKey: residentUsersQueryKey,
+    queryFn: getResidentUsers,
+  });
+}
+
+export function useDecideResident() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, status, declineReason, organization, residentName }: DecideResidentInput) =>
+      decideResident(userId, status, declineReason, organization, residentName),
+    onSuccess: (_result, { userId, status, declineReason, organization }) => {
+      queryClient.setQueryData<Resident[]>(residentUsersQueryKey, (current) =>
+        (current ?? []).map((resident) =>
+          resident.userId === userId ? { ...resident, status, declineReason, organization } : resident,
+        ),
+      );
+      queryClient.invalidateQueries({ queryKey: actionLogsQueryKey });
+    },
+  });
+}
+
+export function useUpdateResident() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (updates: Resident) => updateResident(updates),
+    onSuccess: (_result, updates) => {
+      queryClient.setQueryData<Resident[]>(residentUsersQueryKey, (current) =>
+        (current ?? []).map((resident) => (resident.userId === updates.userId ? updates : resident)),
+      );
+      queryClient.invalidateQueries({ queryKey: actionLogsQueryKey });
+    },
   });
 }

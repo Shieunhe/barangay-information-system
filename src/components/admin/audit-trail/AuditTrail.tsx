@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { actionLogsQueryKey, getActionLogs } from "@/services/actionLogs";
+import { useActionLogs } from "@/services/actionLogs";
 import type { AuditModule } from "@/types/auditTrail";
 import { CurrentDateTime } from "@/components/common/CurrentDateTime";
 import { TablePagination } from "@/components/common/TablePagination";
@@ -20,12 +19,7 @@ const pageSize = 10;
 export function AuditTrail() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const logsQuery = useQuery({
-    queryKey: actionLogsQueryKey,
-    queryFn: getActionLogs,
-    staleTime: 0,
-    refetchOnMount: true,
-  });
+  const logsQuery = useActionLogs();
 
   const entries = logsQuery.data ?? [];
   const search = query.trim().toLowerCase();
