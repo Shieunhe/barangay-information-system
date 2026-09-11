@@ -1,33 +1,16 @@
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { addDoc, collection, getDocs } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase/client";
 import type { ActionLog } from "@/types/actionLog";
 import type { AuditModule, AuditTrailEntry } from "@/types/auditTrail";
 
 export const actionLogsQueryKey = ["action_logs"] as const;
 
-const digitsForDocumentId = "0123456789";
 const defaultStaff = "Administration";
-
-function createSixDigitDocumentId() {
-  return Array.from({ length: 6 }, () => digitsForDocumentId[Math.floor(Math.random() * digitsForDocumentId.length)]).join("");
-}
 
 async function nextActionLogId() {
   const snapshot = await getDocs(collection(getFirebaseDb(), "action_logs"));
 
   return snapshot.docs.reduce((max, entry) => Math.max(max, Number(entry.data().id) || 0), 0) + 1;
-}
-
-async function nextActionLogRef() {
-  const db = getFirebaseDb();
-
-  for (;;) {
-    const ref = doc(db, "action_logs", createSixDigitDocumentId());
-
-    if (!(await getDoc(ref)).exists()) {
-      return ref;
-    }
-  }
 }
 
 function formatLogDate(value: string) {
@@ -85,7 +68,6 @@ export async function createActionLog(fields: {
   details: string;
 }) {
   const now = new Date().toISOString();
-  const ref = await nextActionLogRef();
   const id = await nextActionLogId();
   const record: ActionLog = {
     id,
@@ -99,7 +81,7 @@ export async function createActionLog(fields: {
     update_date: now,
   };
 
-  await setDoc(ref, record);
+  await addDoc(collection(getFirebaseDb(), "action_logs"), record);
 
   return record;
 }
