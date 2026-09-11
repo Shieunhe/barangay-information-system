@@ -1,4 +1,4 @@
-"use client"; // needed sya ani kay for componet client mani nan. basta naa kay mga import needed na sya og "use client"
+"use client";
 
 import { Building, Mail, Lock, X, Eye, EyeOff } from "lucide-react";
 import React, { useState } from "react";
@@ -14,8 +14,7 @@ export function AdminLogin() {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleResetSubmit = (e: React.FormEvent) => {
-    // e.preventDefault();
-    console.log('Password reset requested for:', resetEmail);
+    e.preventDefault();
     setIsSubmitted(true);
   };
 
@@ -31,7 +30,6 @@ export function AdminLogin() {
       router.push("/admin/dashboard");
     } else {
       alert("User Login");
-
     }
   };
 

@@ -14,8 +14,7 @@ export function UserLogin() {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleResetSubmit = (e: React.FormEvent) => {
-    // e.preventDefault();
-    console.log('Password reset requested for:', resetEmail);
+    e.preventDefault();
     setIsSubmitted(true);
   };
 
@@ -81,7 +80,7 @@ export function UserLogin() {
                   <Mail />
                 </div>
                 <input
-                  type="text"
+                  type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

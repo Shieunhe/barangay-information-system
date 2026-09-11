@@ -16,6 +16,7 @@ export function UserRegister() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [email, setEmail] = useState("");
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -42,7 +43,6 @@ export function UserRegister() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
     // Add your signup logic here
   };
 
@@ -80,6 +80,7 @@ export function UserRegister() {
                 <input
                   type="text"
                   name="firstName"
+                  required
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder="First Name"
@@ -94,6 +95,7 @@ export function UserRegister() {
                 <input
                   type="text"
                   name="middleName"
+                  required
                   placeholder="Middle Name"
                   value={formData.middleName}
                   onChange={handleChange}
@@ -112,6 +114,7 @@ export function UserRegister() {
                 <input
                   type="text"
                   name="lastName"
+                  required
                   placeholder="Last Name"
                   value={formData.lastName}
                   onChange={handleChange}
@@ -125,7 +128,7 @@ export function UserRegister() {
                 <input
                   type="text"
                   name="suffix"
-                  placeholder="Suffix"
+                  placeholder="Suffix(Optional)"
                   value={formData.suffix}
                   onChange={handleChange}
                   className="w-full pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
@@ -145,6 +148,7 @@ export function UserRegister() {
                   <input
                     type="date"
                     name="dateOfBirth"
+                    required
                     value={formData.dateOfBirth}
                     onChange={handleChange}
                     className="w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
@@ -159,6 +163,7 @@ export function UserRegister() {
                   type="number"
                   name="age"
                   placeholder="25"
+                  required
                   value={formData.age}
                   onChange={handleChange}
                   className="w-full text-[#000000] px-3 py-2.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
@@ -172,6 +177,7 @@ export function UserRegister() {
                 </label>
                 <select
                   name="status"
+                  required
                   value={formData.status}
                   onChange={handleChange}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
@@ -189,6 +195,7 @@ export function UserRegister() {
                 </label>
                 <select
                   name="gender"
+                  required
                   value={formData.gender}
                   onChange={handleChange}
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
@@ -232,6 +239,7 @@ export function UserRegister() {
                 <input
                   type="tel"
                   name="contactNumber"
+                  required
                   value={formData.contactNumber}
                   onChange={handleChange}
                   placeholder="09123456789"
