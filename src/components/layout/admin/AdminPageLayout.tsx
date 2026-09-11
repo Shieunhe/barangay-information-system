@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AdminSideBar } from "./adminSideBar/AdminSideBar";
 
 export function AdminPageLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(true);
 
   useEffect(() => {
@@ -15,6 +17,10 @@ export function AdminPageLayout({ children }: { children: React.ReactNode }) {
 
     return () => desktop.removeEventListener("change", sync);
   }, []);
+
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#f5f7fb]">
