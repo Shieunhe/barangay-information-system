@@ -1,6 +1,6 @@
 "use client"; // needed sya ani kay for componet client mani nan. basta naa kay mga import needed na sya og "use client"
 
-import { Building, Mail, Lock, X } from "lucide-react";
+import { Building, Mail, Lock, X, Eye, EyeOff } from "lucide-react";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -8,7 +8,7 @@ export function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
-
+  const [showPassword, setShowPassword] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -96,17 +96,32 @@ export function AdminLogin() {
                 Password
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Lock />
+                {/* Lock Icon */}
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Lock className="w-4 h-4 text-slate-400" />
                 </div>
+
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="********"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
                 />
+
+                {/* Show / Hide Password Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
               </div>
               <button
                 onClick={() => setIsForgotPasswordOpen(true)}

@@ -21,11 +21,12 @@ export function UserRegister() {
     firstName: "",
     middleName: "",
     lastName: "",
+    suffix:"",
     dateOfBirth: "",
     age: "",
     gender: "",
     status: "",
-    permanentAddress: "",
+    purok: "",
     contactNumber: "",
     email: "",
     password: "",
@@ -117,6 +118,19 @@ export function UserRegister() {
                   className="w-full pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
                 />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  Suffix
+                </label>
+                <input
+                  type="text"
+                  name="suffix"
+                  placeholder="Suffix"
+                  value={formData.suffix}
+                  onChange={handleChange}
+                  className="w-full pl-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
+                />
+              </div>
             </div>
 
             {/* Birth & Age */}
@@ -187,19 +201,24 @@ export function UserRegister() {
 
             {/* Permanent Address */}
             <div className="mb-5">
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                PERMANENT ADDRESS
-              </label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  name="permanentAddress"
-                  value={formData.permanentAddress}
+            <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  PUROK
+                </label>
+                <select
+                  name="purok"
+                  value={formData.purok}
                   onChange={handleChange}
-                  placeholder="Purok 1, Mabini Street"
-                  className="w-full text-[#000000] pl-10 pr-3 py-2.5 border border-gray-300 rounded-md text-sm placeholder:text-gray-400 focus:outline-none focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
-                />
+                  className="w-50 px-3 py-2.5 border border-gray-300 rounded-md text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
+                >
+                  <option value="purok1">Purok 1</option>
+                  <option value="purok2">Purok 2</option>
+                  <option value="purok3">Purok 3</option>
+                  <option value="purok4">Purok 4</option>
+                  <option value="purok5">Purok 5</option>
+                  <option value="purok6">Purok 6</option>
+                  <option value="purok7">Purok 7</option>
+                </select>
               </div>
             </div>
 
