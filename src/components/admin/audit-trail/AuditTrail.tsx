@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { auditTrailEntries } from "@/common/admin/auditTrailEntries";
+import { useQuery } from "@tanstack/react-query";
+import { actionLogsQueryKey, getActionLogs } from "@/services/actionLogs";
 import type { AuditModule } from "@/types/auditTrail";
 import { CurrentDateTime } from "@/components/common/CurrentDateTime";
+import { TablePagination } from "@/components/common/TablePagination";
 
 const moduleClass: Record<AuditModule, string> = {
   Documents: "bg-sky-100 text-sky-800",
@@ -13,22 +15,36 @@ const moduleClass: Record<AuditModule, string> = {
   System: "bg-zinc-100 text-zinc-600",
 };
 
+const pageSize = 10;
+
 export function AuditTrail() {
   const [query, setQuery] = useState("");
-  const documentActions = auditTrailEntries.filter((entry) => entry.module === "Documents").length;
-  const eventActions = auditTrailEntries.filter((entry) => entry.module === "Events").length;
-  const residentActions = auditTrailEntries.filter((entry) => entry.module === "Residents").length;
+  const [page, setPage] = useState(1);
+  const logsQuery = useQuery({
+    queryKey: actionLogsQueryKey,
+    queryFn: getActionLogs,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  const entries = logsQuery.data ?? [];
+  const documentActions = entries.filter((entry) => entry.module === "Documents").length;
+  const eventActions = entries.filter((entry) => entry.module === "Events").length;
+  const residentActions = entries.filter((entry) => entry.module === "Residents").length;
   const search = query.trim().toLowerCase();
-  const visibleEntries = auditTrailEntries.filter((entry) => {
+  const visibleEntries = entries.filter((entry) => {
     if (!search) {
       return true;
     }
 
-    return [entry.id, entry.date, entry.time, entry.staff, entry.module, entry.action, entry.details]
+    return [entry.id, entry.date, entry.time, entry.staff, entry.module, entry.action, entry.details, entry.residentName]
       .join(" ")
       .toLowerCase()
       .includes(search);
   });
+  const pageCount = Math.max(1, Math.ceil(visibleEntries.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pagedEntries = visibleEntries.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="px-6 py-6 text-brgy-ink lg:px-10 lg:py-8">
@@ -51,7 +67,7 @@ export function AuditTrail() {
 
       <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{auditTrailEntries.length}</p>
+          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{entries.length}</p>
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">All Entries</p>
         </article>
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
@@ -76,8 +92,11 @@ export function AuditTrail() {
         <input
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search staff, module, action, or details"
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setPage(1);
+          }}
+          placeholder="Search staff, resident, action, or details"
           className="w-full bg-transparent text-sm text-brgy-ink outline-none placeholder:text-neutral-400"
         />
       </label>
@@ -89,51 +108,54 @@ export function AuditTrail() {
               <tr className="border-b border-[#e5e7eb] bg-white">
                 <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#5c6bc0]">DATE AND TIME</th>
                 <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#5c6bc0]">STAFF</th>
+                <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#5c6bc0]">RESIDENT</th>
                 <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#5c6bc0]">MODULE</th>
                 <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#5c6bc0]">ACTION</th>
                 <th className="px-5 py-4 text-xs font-semibold uppercase tracking-wide text-[#5c6bc0]">DETAILS</th>
               </tr>
             </thead>
             <tbody>
-              {visibleEntries.length === 0 ? (
+              {logsQuery.isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-neutral-400">
+                  <td colSpan={6} className="px-5 py-8 text-center text-sm text-neutral-400">
+                    Loading audit trail...
+                  </td>
+                </tr>
+              ) : logsQuery.error ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-8 text-center text-sm text-red-600">
+                    {logsQuery.error instanceof Error ? logsQuery.error.message : "Could not load action logs."}
+                  </td>
+                </tr>
+              ) : visibleEntries.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-5 py-8 text-center text-sm text-neutral-400">
                     No matching entries.
                   </td>
                 </tr>
-              ) : null}
-              {visibleEntries.map((entry) => (
-                <tr key={entry.id} className="border-b border-neutral-200 last:border-0">
-                  <td className="px-5 py-4">
-                    <p className="font-medium">{entry.date}</p>
-                    <p className="text-xs text-neutral-500">{entry.time}</p>
-                  </td>
-                  <td className="px-5 py-4">{entry.staff}</td>
-                  <td className="px-5 py-4">
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${moduleClass[entry.module]}`}>
-                      {entry.module}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">{entry.action}</td>
-                  <td className="px-5 py-4 text-neutral-600">{entry.details}</td>
-                </tr>
-              ))}
+              ) : (
+                pagedEntries.map((entry) => (
+                  <tr key={entry.id} className="border-b border-neutral-200 last:border-0">
+                    <td className="px-5 py-4">
+                      <p className="font-medium">{entry.date}</p>
+                      <p className="text-xs text-neutral-500">{entry.time}</p>
+                    </td>
+                    <td className="px-5 py-4">{entry.staff}</td>
+                    <td className="px-5 py-4">{entry.residentName || "—"}</td>
+                    <td className="px-5 py-4">
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${moduleClass[entry.module]}`}>
+                        {entry.module}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4">{entry.action}</td>
+                    <td className="px-5 py-4 text-neutral-600">{entry.details}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-
-        <div className="flex items-center justify-center gap-3 px-4 py-5">
-          {[1, 2, 3, 4, 5].map((page) => (
-            <span
-              key={page}
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm ${
-                page === 1 ? "bg-brgy-sidebar font-medium text-white" : "text-brgy-ink"
-              }`}
-            >
-              {page}
-            </span>
-          ))}
-        </div>
+        <TablePagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
       </section>
     </div>
   );

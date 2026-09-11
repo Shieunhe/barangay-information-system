@@ -1,7 +1,8 @@
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase/client";
+import { createActionLog } from "@/services/actionLogs";
 import { createUserOrganization, getUserOrganizationsByUid, updateUserOrganization } from "@/services/userOrganizations";
-import type { Resident, ResidentStatus } from "@/types/resident";
+import { formatResidentFullName, type Resident, type ResidentStatus } from "@/types/resident";
 import { USER_ROLE, type Users, type UserStatus } from "@/types/user";
 
 export const residentUsersQueryKey = ["users", "residents"] as const;
@@ -117,6 +118,7 @@ export async function decideResident(
   status: ResidentStatus,
   declineReason: string | null,
   organization: string | null,
+  residentName: string,
 ) {
   await updateDoc(doc(getFirebaseDb(), "users", userId), {
     status: toUserStatus(status),
@@ -126,7 +128,23 @@ export async function decideResident(
 
   if (status === "Registered" && organization) {
     await createUserOrganization(userId, organization);
+    await createActionLog({
+      uid: userId,
+      residentName,
+      module: "residents",
+      action: "Registered resident",
+      details: `Registered ${residentName} and assigned ${organization}.`,
+    });
+    return;
   }
+
+  await createActionLog({
+    uid: userId,
+    residentName,
+    module: "residents",
+    action: "Declined resident",
+    details: `Declined ${residentName}. Reason: ${declineReason || "No reason provided"}.`,
+  });
 }
 
 function splitFullName(name: string) {
@@ -138,10 +156,27 @@ function splitFullName(name: string) {
   return { first_name, middle_name, last_name };
 }
 
+function describeChange(from: string, to: string) {
+  if (from === to) {
+    return null;
+  }
+
+  return `from ${from || "none"} to ${to || "none"}`;
+}
+
 export async function updateResident(resident: Resident) {
   const userRef = doc(getFirebaseDb(), "users", resident.userId);
   const existing = (await getDoc(userRef)).data() as Users | undefined;
+  const organizations = await getUserOrganizationsByUid();
+  const previousOrganization = organizations.get(resident.userId)?.organization ?? "";
   const { first_name, middle_name, last_name } = splitFullName(resident.name);
+  const previousName = existing
+    ? formatResidentFullName({
+        name: formatName(existing),
+        suffix: existing.suffix,
+      })
+    : "";
+  const nextName = formatResidentFullName(resident);
 
   await setDoc(userRef, {
     id: existing?.id ?? resident.id,
@@ -167,4 +202,27 @@ export async function updateResident(resident: Resident) {
   if (resident.status === "Registered" && resident.organization) {
     await updateUserOrganization(resident.userId, resident.organization);
   }
+
+  const changes = [
+    describeChange(previousName, nextName),
+    describeChange(existing ? String(existing.age) : "", String(resident.age)),
+    describeChange(existing?.sex ?? "", resident.sex),
+    describeChange(existing?.civil_status ?? "", resident.civilStatus),
+    describeChange(existing?.date_of_birth ?? "", resident.birthDate),
+    describeChange(existing?.permanent_address ?? "", resident.address),
+    describeChange(existing?.purok ?? "", resident.purok),
+    describeChange(existing?.contact_number ?? "", resident.contact),
+    describeChange(previousOrganization, resident.organization ?? ""),
+  ].filter((change): change is string => Boolean(change));
+
+  await createActionLog({
+    uid: resident.userId,
+    residentName: nextName,
+    module: "residents",
+    action: "Updated resident",
+    details:
+      changes.length > 0
+        ? `Updated ${nextName} ${changes.join(", ")}.`
+        : `Updated ${nextName}.`,
+  });
 }

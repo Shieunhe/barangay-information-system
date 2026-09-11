@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { actionLogsQueryKey, getActionLogs } from "@/services/actionLogs";
 import { getResidentUsers, residentUsersQueryKey } from "@/services/users";
 import { residentStatusClass } from "@/common/statusStyles";
 import { CurrentDateTime } from "@/components/common/CurrentDateTime";
@@ -14,9 +15,16 @@ export function Dashboard() {
     queryKey: residentUsersQueryKey,
     queryFn: getResidentUsers,
   });
+  const logsQuery = useQuery({
+    queryKey: actionLogsQueryKey,
+    queryFn: getActionLogs,
+    staleTime: 0,
+    refetchOnMount: true,
+  });
 
   const residents = residentsQuery.data ?? [];
   const registeredResidents = residents.filter((resident) => resident.status === "Registered").length;
+  const recentActivity = (logsQuery.data ?? []).slice(0, 4);
   const latestPendingResidents = residents
     .filter((resident) => resident.status === "Pending")
     .sort((left, right) => {
@@ -59,7 +67,9 @@ export function Dashboard() {
           <p className="mt-1 text-sm text-neutral-400">With assigned staff</p>
         </article>
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">0</p>
+          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">
+            {logsQuery.isLoading ? "—" : (logsQuery.data ?? []).length}
+          </p>
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">Audit entries</p>
           <p className="mt-1 text-sm text-neutral-400">Recorded this week</p>
         </article>
@@ -122,7 +132,27 @@ export function Dashboard() {
               View all trails
             </Link>
           </div>
-          <p className="py-8 text-center text-sm text-neutral-400">No recent activity.</p>
+          {logsQuery.isLoading ? (
+            <p className="py-8 text-center text-sm text-neutral-400">Loading activity...</p>
+          ) : logsQuery.error ? (
+            <p className="py-8 text-center text-sm text-red-600">Could not load action logs.</p>
+          ) : recentActivity.length === 0 ? (
+            <p className="py-8 text-center text-sm text-neutral-400">No recent activity.</p>
+          ) : (
+            <ul>
+              {recentActivity.map((entry) => (
+                <li key={entry.id} className="flex items-start justify-between gap-4 border-b border-neutral-100 py-3 last:border-0">
+                  <div>
+                    <p className="text-sm font-semibold text-brgy-ink">{entry.action}</p>
+                    <p className="mt-1 text-sm text-neutral-400">{entry.residentName || entry.staff}</p>
+                  </div>
+                  <p className="shrink-0 text-sm text-neutral-400">
+                    {entry.date}, {entry.time}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">

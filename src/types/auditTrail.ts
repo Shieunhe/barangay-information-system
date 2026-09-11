@@ -8,4 +8,5 @@ export type AuditTrailEntry = {
   module: AuditModule;
   action: string;
   details: string;
+  residentName: string;
 };

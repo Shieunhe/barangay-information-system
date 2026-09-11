@@ -3,21 +3,25 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { actionLogsQueryKey } from "@/services/actionLogs";
 import { decideResident, getResidentUsers, residentUsersQueryKey, updateResident } from "@/services/users";
 import { residentStatusClass } from "@/common/statusStyles";
 import { ResidentViewModal } from "@/components/admin/residents/ResidentViewModal";
 import { Button } from "@/components/common/Button";
 import { Snackbar } from "@/components/common/Snackbar";
 import { CurrentDateTime } from "@/components/common/CurrentDateTime";
+import { TablePagination } from "@/components/common/TablePagination";
 import { formatResidentFullName, type Resident, type ResidentStatus } from "@/types/resident";
 
 const pendingStatus = "Pending" satisfies ResidentStatus;
 const registeredStatus = "Registered" satisfies ResidentStatus;
 const notRegisteredStatus = "Not registered" satisfies ResidentStatus;
+const pageSize = 10;
 
 export function Residents() {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Resident | null>(null);
   const [snackbar, setSnackbar] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
@@ -37,13 +41,21 @@ export function Residents() {
       status: ResidentStatus;
       declineReason: string | null;
       organization: string | null;
-    }) => decideResident(userId, status, declineReason, organization),
+    }) =>
+      decideResident(
+        userId,
+        status,
+        declineReason,
+        organization,
+        selected ? formatResidentFullName(selected) : "",
+      ),
     onSuccess: (_result, { userId, status, declineReason, organization }) => {
       queryClient.setQueryData<Resident[]>(residentUsersQueryKey, (current) =>
         (current ?? []).map((resident) =>
           resident.userId === userId ? { ...resident, status, declineReason, organization } : resident,
         ),
       );
+      queryClient.invalidateQueries({ queryKey: actionLogsQueryKey });
       setSnackbar({
         message: status === registeredStatus ? "Resident registered." : "Resident declined.",
         variant: "success",
@@ -65,6 +77,7 @@ export function Residents() {
         (current ?? []).map((resident) => (resident.userId === updates.userId ? updates : resident)),
       );
       setSelected(updates);
+      queryClient.invalidateQueries({ queryKey: actionLogsQueryKey });
       setSnackbar({ message: "Resident details updated.", variant: "success" });
     },
     onError: () => {
@@ -83,9 +96,10 @@ export function Residents() {
 
   const residents = residentsQuery.data ?? [];
   const saving = decideMutation.isPending || updateMutation.isPending;
-  const loadError =
-    residentsQuery.error || decideMutation.error || updateMutation.error
-      ? "Could not load or update residents in Firestore."
+  const loadError = residentsQuery.error instanceof Error
+    ? residentsQuery.error.message
+    : residentsQuery.error
+      ? "Could not load residents from Database."
       : "";
 
   const totalResidents = residents.filter((resident) => resident.status === registeredStatus).length;
@@ -104,6 +118,9 @@ export function Residents() {
       .toLowerCase()
       .includes(search);
   });
+  const pageCount = Math.max(1, Math.ceil(visibleResidents.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const pagedResidents = visibleResidents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="px-6 py-6 text-brgy-ink lg:px-10 lg:py-8">
@@ -151,7 +168,10 @@ export function Residents() {
         <input
           type="search"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setPage(1);
+          }}
           placeholder="Search name, address, status, or ID"
           className="w-full bg-transparent text-sm text-brgy-ink outline-none placeholder:text-neutral-400"
         />
@@ -190,7 +210,7 @@ export function Residents() {
                   </td>
                 </tr>
               ) : (
-                visibleResidents.map((resident) => (
+                pagedResidents.map((resident) => (
                   <tr key={resident.userId} className="border-b border-neutral-200 last:border-0">
                     <td className="px-5 py-4 font-medium">{resident.id}</td>
                     <td className="px-5 py-4">{formatResidentFullName(resident)}</td>
@@ -216,6 +236,7 @@ export function Residents() {
             </tbody>
           </table>
         </div>
+        <TablePagination page={currentPage} pageCount={pageCount} onPageChange={setPage} />
       </section>
 
       {selected ? (
