@@ -26,7 +26,7 @@ export function AdminLogin() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === "admin" && password === "admin") {
+    if (email === "admin@mail.com" && password === "admin") {
       router.push("/admin/dashboard");
     } else {
       alert("User Login");
