@@ -214,9 +214,9 @@ export function UserRegister() {
                   </select>
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Gender</span>
+                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Sex</span>
                   <select name="gender" required value={formData.gender} onChange={handleChange} className={fieldClass}>
-                    <option value="">Select gender</option>
+                    <option value="">Select Sex</option>
                     {sexes.map((sex) => (
                       <option key={sex} value={sex}>
                         {sex}

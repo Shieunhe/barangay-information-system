@@ -1,11 +1,14 @@
 export const USER_ROLE = 1;
+export const ADMIN_ROLE = 2;
+
+export type UserRole = typeof USER_ROLE | typeof ADMIN_ROLE;
 
 export type UserStatus = "account verification" | "pending" | "registered" | "not registered";
 
 export type Users = {
   id: number;
   user_id: string;
-  role: typeof USER_ROLE;
+  role: UserRole;
   first_name: string;
   last_name: string;
   middle_name: string;
