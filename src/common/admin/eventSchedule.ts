@@ -35,6 +35,11 @@ export function formatEventDate(date: string) {
 
 export function formatEventTime(time: string) {
   const [hour, minute] = time.split(":").map(Number);
+
+  if (Number.isNaN(hour) || Number.isNaN(minute)) {
+    return time;
+  }
+
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
     minute: "2-digit",

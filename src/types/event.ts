@@ -13,7 +13,7 @@ export type EventType =
   | "Senior Citizen Program";
 
 export type EventAudience =
-  | "All"
+  | "None"
   | "Barangay Official"
   | "Fisherman"
   | "Tricycle Driver"
@@ -23,6 +23,20 @@ export type EventAudience =
   | "Household Worker";
 
 export type EventStatus = "Upcoming" | "Ongoing" | "Done";
+
+export type EventListRecord = {
+  event_id: string;
+  title: string;
+  description: string;
+  type: EventType;
+  audience: EventAudience;
+  assignee: string;
+  location: string;
+  date: string;
+  time: string;
+  create_date: string;
+  update_date: string;
+};
 
 export type BarangayEvent = {
   id: string;

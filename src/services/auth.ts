@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signOut,
 } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { useMutation } from "@tanstack/react-query";
@@ -13,7 +14,7 @@ import { isPhMobile } from "@/common/phMobile";
 import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase/client";
 import { createResidentUser } from "@/services/users";
 // import { sendSmsHistoryCode } from "@/services/smsHistories";
-import type { Users } from "@/types/user";
+import { Users, ADMIN_ROLE } from "@/types/user";
 
 export type ResidentSignupFields = {
   firstName: string;
@@ -154,5 +155,49 @@ export function useSignInResident() {
 export function useSendResidentPasswordReset() {
   return useMutation({
     mutationFn: (email: string) => sendResidentPasswordReset(email),
+  });
+}
+
+// ADMIN LOGIC PART FOR LOGIN
+
+export async function signInAdmin(email: string, password: string) {
+  const credential = await signInWithEmailAndPassword(
+    getFirebaseAuth(),
+    email.trim().toLowerCase(),
+    password,
+  );
+  const snapshot = await getDoc(doc(getFirebaseDb(), "users", credential.user.uid));
+
+  if (!snapshot.exists()) {
+    await signOut(getFirebaseAuth())
+    throw new Error("No admin profile found for this account.");
+  }
+
+  const user = snapshot.data() as Users;  
+
+  if (user.role !== ADMIN_ROLE) {
+    await signOut(getFirebaseAuth())
+    throw new Error("This account is invalid.");
+  }
+
+  return {
+    uid: credential.user.uid,
+    user,
+  }
+};
+
+export function useSignInAdmin() {
+  return useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) => signInAdmin(email, password),
+  });
+}
+
+export async function signOutAdmin() {
+  await signOut(getFirebaseAuth());
+}
+
+export function useSignOutAdmin() {
+  return useMutation({
+    mutationFn: signOutAdmin,
   });
 }

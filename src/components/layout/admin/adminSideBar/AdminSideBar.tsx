@@ -21,7 +21,7 @@ export function AdminSideBar({
       ) : null}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-30 flex w-72 shrink-0 flex-col overflow-visible bg-brgy-sidebar transition-transform lg:static ${
+        className={`fixed inset-y-0 left-0 z-30 flex h-screen w-72 shrink-0 flex-col overflow-visible bg-brgy-sidebar transition-transform lg:sticky lg:top-0 lg:self-start ${
           open ? "translate-x-0" : "-translate-x-full lg:hidden"
         }`}
       >

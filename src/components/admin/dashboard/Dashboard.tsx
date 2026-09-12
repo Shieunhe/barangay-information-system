@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionLogs } from "@/services/actionLogs";
-import { useResidentUsers } from "@/services/users";
+import { formatEventDate, formatEventTime, getEventStatus } from "@/common/admin/eventSchedule";
 import { toPhpDateTime } from "@/common/phpTime";
 import { residentStatusClass } from "@/common/statusStyles";
 import { CurrentDateTime } from "@/components/common/CurrentDateTime";
+import { useActionLogs } from "@/services/actionLogs";
+import { useEventList } from "@/services/eventList";
+import { useResidentUsers } from "@/services/users";
 import { formatResidentFullName } from "@/types/resident";
 
 const pendingLimit = 3;
@@ -13,9 +15,17 @@ const pendingLimit = 3;
 export function Dashboard() {
   const residentsQuery = useResidentUsers();
   const logsQuery = useActionLogs();
+  const eventsQuery = useEventList();
 
   const residents = residentsQuery.data ?? [];
   const registeredResidents = residents.filter((resident) => resident.status === "Registered").length;
+  const upcomingEvents = (eventsQuery.data ?? [])
+    .filter((event) => getEventStatus(event.date) !== "Done")
+    .sort((left, right) => {
+      const byDate = left.date.localeCompare(right.date);
+      return byDate !== 0 ? byDate : left.time.localeCompare(right.time);
+    });
+  const upcomingPreview = upcomingEvents.slice(0, 4);
   const recentActivity = (logsQuery.data ?? []).slice(0, 4);
   const latestPendingResidents = residents
     .filter((resident) => resident.status === "Pending")
@@ -54,7 +64,9 @@ export function Dashboard() {
           <p className="mt-1 text-sm text-neutral-400">People listed in the barangay</p>
         </article>
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">0</p>
+          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">
+            {eventsQuery.isLoading ? "—" : upcomingEvents.length}
+          </p>
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">Upcoming events</p>
           <p className="mt-1 text-sm text-neutral-400">With assigned staff</p>
         </article>
@@ -109,7 +121,28 @@ export function Dashboard() {
               View all events
             </Link>
           </div>
-          <p className="py-8 text-center text-sm text-neutral-400">No upcoming event.</p>
+          {eventsQuery.isLoading ? (
+            <p className="py-8 text-center text-sm text-neutral-400">Loading events...</p>
+          ) : eventsQuery.error ? (
+            <p className="py-8 text-center text-sm text-red-600">Could not load events from Firestore.</p>
+          ) : upcomingPreview.length === 0 ? (
+            <p className="py-8 text-center text-sm text-neutral-400">No upcoming event.</p>
+          ) : (
+            <ul>
+              {upcomingPreview.map((event) => (
+                <li key={event.id} className="flex items-start justify-between gap-4 border-b border-neutral-100 py-3 last:border-0">
+                  <div>
+                    <p className="text-sm font-semibold text-brgy-ink">{event.title}</p>
+                    <p className="mt-1 text-sm text-neutral-400">{event.assignee}</p>
+                  </div>
+                  <p className="shrink-0 text-right text-sm text-neutral-400">
+                    {formatEventDate(event.date)}
+                    <span className="mt-1 block">{formatEventTime(event.time)}</span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
 

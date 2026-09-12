@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { eventAudiences } from "@/common/admin/eventAudiences";
+import { organizations } from "@/common/admin/organizations";
 import { eventTypes } from "@/common/admin/eventTypes";
 import { Button } from "@/components/common/Button";
 import type { BarangayEvent, EventAudience, EventType } from "@/types/event";
@@ -42,10 +42,12 @@ function TextField({
 
 export function EventPostModal({
   loading,
+  submitError,
   onClose,
   onPost,
 }: {
   loading: boolean;
+  submitError?: string;
   onClose: () => void;
   onPost: (event: Omit<BarangayEvent, "id">) => void;
 }) {
@@ -137,9 +139,9 @@ export function EventPostModal({
                 className="w-full appearance-none rounded-lg border border-[#c5d4f0] bg-white px-3 py-2.5 pr-10 text-sm text-brgy-ink outline-none"
               >
                 <option value="">Select who can join</option>
-                {eventAudiences.map((eventAudience) => (
+                {organizations.map((eventAudience) => (
                   <option key={eventAudience} value={eventAudience}>
-                    {eventAudience === "All" ? "All residents" : eventAudience}
+                    {eventAudience === "None" ? "All residents" : eventAudience}
                   </option>
                 ))}
               </select>
@@ -230,7 +232,7 @@ export function EventPostModal({
               />
             </label>
           </div>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error || submitError ? <p className="text-sm text-red-600">{error || submitError}</p> : null}
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Button size="md" type="submit" loading={loading}>
               Post event

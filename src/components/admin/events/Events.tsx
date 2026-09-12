@@ -2,20 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { initialEvents } from "@/common/admin/events";
 import { formatEventDate, formatEventTime, getEventStatus } from "@/common/admin/eventSchedule";
 import { eventStatusClass, eventTypeClass } from "@/common/statusStyles";
 import { EventPostModal } from "@/components/admin/events/EventPostModal";
 import { Button } from "@/components/common/Button";
 import { CurrentDateTime } from "@/components/common/CurrentDateTime";
+import { useCreateEventListItem, useEventList } from "@/services/eventList";
 import type { BarangayEvent } from "@/types/event";
 
 export function Events() {
-  const [events, setEvents] = useState(initialEvents);
   const [query, setQuery] = useState("");
   const [posting, setPosting] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const eventsQuery = useEventList();
+  const createEvent = useCreateEventListItem();
 
+  const events = eventsQuery.data ?? [];
   const upcomingCount = events.filter((event) => getEventStatus(event.date) === "Upcoming").length;
   const doneCount = events.filter((event) => getEventStatus(event.date) === "Done").length;
 
@@ -32,10 +33,13 @@ export function Events() {
       event.description,
       event.type,
       event.audience,
+      event.audience === "None" ? "All residents" : "",
       event.assignee,
       event.location,
       event.date,
+      formatEventDate(event.date),
       event.time,
+      formatEventTime(event.time),
       status,
     ]
       .join(" ")
@@ -44,19 +48,13 @@ export function Events() {
   });
 
   function postEvent(nextEvent: Omit<BarangayEvent, "id">) {
-    if (loading) {
+    if (createEvent.isPending) {
       return;
     }
 
-    setLoading(true);
-    window.setTimeout(() => {
-      setEvents((current) => {
-        const nextId = `EV-${String(current.length + 1).padStart(3, "0")}`;
-        return [{ ...nextEvent, id: nextId }, ...current];
-      });
-      setLoading(false);
-      setPosting(false);
-    }, 800);
+    createEvent.mutate(nextEvent, {
+      onSuccess: () => setPosting(false),
+    });
   }
 
   return (
@@ -80,7 +78,9 @@ export function Events() {
 
       <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-3">
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{events.length}</p>
+          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">
+            {eventsQuery.isLoading ? "—" : events.length}
+          </p>
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">Total Events</p>
         </article>
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
@@ -88,7 +88,9 @@ export function Events() {
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">Upcoming Events</p>
         </article>
         <article className="rounded-[10px] bg-white px-5 py-5 shadow-[0_2px_4px_rgba(0,0,0,0.05)]">
-          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">{doneCount}</p>
+          <p className="text-[2rem] font-bold leading-none text-[#c5a059]">
+            {eventsQuery.isLoading ? "—" : doneCount}
+          </p>
           <p className="mt-1.5 text-[0.9rem] font-bold text-black">Done Events</p>
         </article>
       </div>
@@ -112,6 +114,10 @@ export function Events() {
         </Button>
       </div>
 
+      {eventsQuery.error ? (
+        <p className="mb-4 text-sm text-red-600">Could not load events from Firestore.</p>
+      ) : null}
+
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1100px] text-left text-sm">
@@ -128,43 +134,50 @@ export function Events() {
               </tr>
             </thead>
             <tbody>
-              {visibleEvents.length === 0 ? (
+              {eventsQuery.isLoading ? (
+                <tr>
+                  <td colSpan={8} className="px-5 py-8 text-center text-sm text-neutral-400">
+                    Loading events...
+                  </td>
+                </tr>
+              ) : visibleEvents.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-5 py-8 text-center text-sm text-neutral-400">
                     No matching events.
                   </td>
                 </tr>
-              ) : null}
-              {visibleEvents.map((event) => {
-                const status = getEventStatus(event.date);
+              ) : (
+                visibleEvents.map((event) => {
+                  const status = getEventStatus(event.date);
 
-                return (
-                  <tr key={event.id} className="border-b border-neutral-200 last:border-0">
-                    <td className="px-5 py-4 font-medium">{event.id}</td>
-                    <td className="px-5 py-4">
-                      <p className="font-medium">{event.title}</p>
-                      <p className="mt-1 max-w-xs text-xs text-neutral-500">{event.description}</p>
-                    </td>
-                    <td className="px-5 py-4">{event.audience === "All" ? "All residents" : event.audience}</td>
-                    <td className="px-5 py-4">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${eventTypeClass[event.type]}`}>
-                        {event.type}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">{event.assignee}</td>
-                    <td className="px-5 py-4">{event.location}</td>
-                    <td className="px-5 py-4">
-                      <p>{formatEventDate(event.date)}</p>
-                      <p className="text-xs text-neutral-500">{formatEventTime(event.time)}</p>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${eventStatusClass[status]}`}>
-                        {status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr key={event.id} className="border-b border-neutral-200 last:border-0">
+                      <td className="px-5 py-4 font-medium">{event.id}</td>
+                      <td className="px-5 py-4">
+                        <p className="font-medium">{event.title}</p>
+                        <p className="mt-1 max-w-xs text-xs text-neutral-500">{event.description}</p>
+                      </td>
+                      <td className="px-5 py-4">{event.audience === "None" ? "All residents" : event.audience}</td>
+                      <td className="px-5 py-4">
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${eventTypeClass[event.type]}`}>
+                          {event.type}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">{event.assignee}</td>
+                      <td className="px-5 py-4">{event.location}</td>
+                      <td className="px-5 py-4">
+                        <p>{formatEventDate(event.date)}</p>
+                        <p className="text-xs text-neutral-500">{formatEventTime(event.time)}</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${eventStatusClass[status]}`}>
+                          {status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -172,9 +185,10 @@ export function Events() {
 
       {posting ? (
         <EventPostModal
-          loading={loading}
+          loading={createEvent.isPending}
+          submitError={createEvent.isError ? "Could not save event to Firestore." : ""}
           onClose={() => {
-            setLoading(false);
+            createEvent.reset();
             setPosting(false);
           }}
           onPost={postEvent}
