@@ -5,6 +5,9 @@
   --foreground: #171717;
   --brgy-navy: #0f2c59;
   --brgy-navy-mid: #18427a;
+  --brgy-sidebar: #496aa6;
+  --brgy-sidebar-text: #496aa6;
+  --brgy-sidebar-active: #f6f6f6;
   --brgy-gold: #c9a227;
   --brgy-paper: #f3f0e8;
   --brgy-ink: #1c2430;
@@ -16,6 +19,9 @@
   --color-foreground: var(--foreground);
   --color-brgy-navy: var(--brgy-navy);
   --color-brgy-navy-mid: var(--brgy-navy-mid);
+  --color-brgy-sidebar: var(--brgy-sidebar);
+  --color-brgy-sidebar-text: var(--brgy-sidebar-text);
+  --color-brgy-sidebar-active: var(--brgy-sidebar-active);
   --color-brgy-gold: var(--brgy-gold);
   --color-brgy-paper: var(--brgy-paper);
   --color-brgy-ink: var(--brgy-ink);

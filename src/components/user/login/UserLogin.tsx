@@ -1,231 +1,274 @@
-"use client"; // needed sya ani kay for componet client mani nan. basta naa kay mga import needed na sya og "use client"
+"use client";
 
-import { Building, Mail, Lock, X, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Building, Mail, Lock, X, ArrowRight, Eye, EyeOff, CircleAlert, CircleCheck, LoaderCircle } from "lucide-react";
+import Link from "next/link";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { firebaseAuthMessage, useSendResidentPasswordReset, useSignInResident } from "@/services/auth";
+
+function loginStatusMessage(status: string) {
+  if (status === "account verification") {
+    return "Logged in. Your account is under verification.";
+  }
+
+  if (status === "pending") {
+    return "Logged in. Your registration is pending approval.";
+  }
+
+  if (status === "not registered") {
+    return "Logged in. Your registration was not approved.";
+  }
+
+  return "Logged in.";
+}
 
 export function UserLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
+  const [resetEmail, setResetEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const loginMutation = useSignInResident();
+  const resetMutation = useSendResidentPasswordReset();
 
   const handleResetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitted(true);
+    resetMutation.mutate(resetEmail, {
+      onSuccess: () => setIsSubmitted(true),
+    });
   };
 
   const closeModal = () => {
     setIsForgotPasswordOpen(false);
     setIsSubmitted(false);
-    setResetEmail('');
+    setResetEmail("");
+    resetMutation.reset();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === "admin" && password === "admin") {
-      router.push("/admin/dashboard");
-    } else {
-      alert("User Login");
+    loginMutation.mutate({ email, password });
+  };
 
+  const clearLoginStatus = () => {
+    if (loginMutation.isError || loginMutation.isSuccess) {
+      loginMutation.reset();
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#f2f8f4] flex items-center justify-center p-8 sm:p-16 font-sans">
-      <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-        {/* ================= LEFT SIDE: TITLE & DESCRIPTION ================= */}
-        <div className="md:col-span-7 space-y-6 pr-0 md:pr-12">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#62c088] leading-tight tracking-tight">
-            Barangay<br />
-            Management<br />
-            Information<br />
-            System
-          </h1>
+    <div className="relative min-h-screen overflow-hidden bg-[#eef8f2] font-sans">
+      <div className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full bg-[#62c088]/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-28 -right-16 h-96 w-96 rounded-full bg-[#3EB370]/15 blur-3xl" />
 
-          <p className="text-slate-600 text-sm sm:text-base max-w-md leading-relaxed">
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-          </p>
-        </div>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-10 sm:px-10 lg:px-16">
+        <div className="grid w-full grid-cols-1 items-center gap-10 lg:grid-cols-12 lg:gap-16">
+          <div className="lg:col-span-6">
+            <p className="mb-5 inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-semibold tracking-wide text-[#2f8854] shadow-sm">
+              Resident portal
+            </p>
+            <h1 className="text-4xl font-bold leading-tight tracking-tight text-[#2c3e50] sm:text-5xl lg:text-[3.4rem]">
+              Barangay Management
+              <span className="mt-1 block text-[#3EB370]">Information System</span>
+            </h1>
+            <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-600 sm:text-base">
+              Sign in to view your registration, request documents, and stay updated on barangay announcements.
+            </p>
+          </div>
 
-        {/* ================= RIGHT SIDE: LOGIN CARD ================= */}
-        <div className="md:col-span-5 flex justify-center md:justify-end">
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl shadow-slate-200/60 p-8 sm:p-10 text-center">
-
-            {/* Logo Header */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="text-[#3EB370] border-2 border-[#3EB370] rounded-xl p-2 flex items-center justify-center">
-                <Building className="w-6 h-6" />
-              </div>
-              <span className="text-[#1E293B] font-bold text-base leading-tight">
-                Barangay Management<br />Information System
-              </span>
-            </div>
-
-            {/* Login Title */}
-            <h2 className="text-lg font-bold text-slate-800 tracking-wide uppercase">LOG IN</h2>
-            <p className="text-[11px] text-slate-400 mt-1 mb-8"></p>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6 text-left">
-              {/* Username Input */}
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Mail />
+          <div className="lg:col-span-6 lg:flex lg:justify-end">
+            <div className="w-full max-w-md rounded-[28px] border border-white/70 bg-white/95 p-7 shadow-[0_24px_60px_rgba(15,60,40,0.12)] backdrop-blur sm:p-9">
+              <div className="mb-7 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e8f8ef] text-[#3EB370]">
+                  <Building className="h-6 w-6" />
                 </div>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
-                />
+                <div>
+                  <h2 className="text-xl font-bold text-slate-800">Welcome back</h2>
+                  <p className="text-sm text-slate-500">Log in with your resident account</p>
+                </div>
               </div>
 
-              {/* Password Input */}
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                {/* Lock Icon */}
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="w-4 h-4 text-slate-400" />
+              <form onSubmit={handleSubmit} className="space-y-4 text-left">
+                {loginMutation.isError ? (
+                  <p className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+                    <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{firebaseAuthMessage(loginMutation.error)}</span>
+                  </p>
+                ) : null}
+                {loginMutation.isSuccess ? (
+                  <p className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-700">
+                    <CircleCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{loginStatusMessage(loginMutation.data.user.status)}</span>
+                  </p>
+                ) : null}
+
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Email address</span>
+                  <span className="relative block">
+                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="email"
+                      required
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        clearLoginStatus();
+                      }}
+                      placeholder="your.email@example.com"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#3EB370] focus:bg-white focus:ring-4 focus:ring-[#3EB370]/15"
+                    />
+                  </span>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Password</span>
+                  <span className="relative block">
+                    <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        clearLoginStatus();
+                      }}
+                      placeholder="Enter your password"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#3EB370] focus:bg-white focus:ring-4 focus:ring-[#3EB370]/15"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 transition-colors hover:text-slate-600"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </span>
+                </label>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(true)}
+                    className="text-sm font-medium text-[#2f8854] transition-colors hover:text-[#246b42]"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
 
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="********"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-slate-800"
-                />
-
-                {/* Show / Hide Password Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-
-
-              <button
-                onClick={() => setIsForgotPasswordOpen(true)}
-                className="inline-flex items-center space-x-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 transition-colors"
-              >
-                {/* <span>&rarr;</span> */}
-                <span>Forgot Password</span>
-              </button>
-
-
-              {/* Submit Button */}
-              <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full bg-[#42b672] hover:bg-[#389e62] active:bg-[#2f8854] text-white font-medium py-2.5 rounded-md text-md transition-colors shadow-sm"
+                  disabled={loginMutation.isPending}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#3EB370] py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#349B61] active:bg-[#2f8854] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Log In
+                  {loginMutation.isPending ? (
+                    <>
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    "Log in"
+                  )}
                 </button>
-              </div>
-            </form>
+              </form>
 
-
-            <div className="mt-6 text-right">
-              <a
-                href="/user/register"
-                className="inline-flex items-center space-x-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 transition-colors"
-              >
-                <span>Sign Up</span>
-                <ArrowRight />
-              </a>
+              <p className="mt-6 text-center text-sm text-slate-500">
+                Don&apos;t have an account?{" "}
+                <Link href="/user/register" className="inline-flex items-center gap-1 font-semibold text-[#2f8854] hover:text-[#246b42]">
+                  Sign up
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </p>
             </div>
-
           </div>
         </div>
-        {/* ================= FORGOT PASSWORD POP-UP MODAL ================= */}
-        {isForgotPasswordOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-200">
-              {/* Close Button */}
-              <button
-                onClick={closeModal}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              {/* Modal Header */}
-              <div className="text-center mt-2 mb-6">
-                <h3 className="text-lg font-bold text-[#1E293B]">Reset Password</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter your email address and we will send you a link to reset your password.
-                </p>
-              </div>
-
-              {/* Modal Body */}
-              {!isSubmitted ? (
-                <form onSubmit={handleResetSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">
-                      Email Address
-                    </label>
-                    <div className="relative flex items-center">
-                      <Mail className="w-5 h-5 text-gray-400 absolute left-3" />
-                      <input
-                        type="email"
-                        placeholder="your.email@example.com"
-                        value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                        className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:border-[#3EB370]"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-[#3EB370] hover:bg-[#349B61] text-white font-medium py-2.5 rounded-xl transition duration-200 text-sm mt-2"
-                  >
-                    Send Reset Link
-                  </button>
-                </form>
-              ) : (
-                <div className="text-center py-4 space-y-3">
-                  <div className="w-12 h-12 bg-green-100 text-[#3EB370] rounded-full flex items-center justify-center mx-auto">
-                    <Mail className="w-6 h-6" />
-                  </div>
-                  <p className="text-sm font-medium text-gray-800">
-                    Reset link sent!
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Please check your inbox at <span className="font-semibold">{resetEmail}</span>
-                  </p>
-                  <button
-                    onClick={closeModal}
-                    className="mt-4 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium py-2 rounded-xl transition"
-                  >
-                    Close
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {isForgotPasswordOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+            <button
+              onClick={closeModal}
+              className="absolute right-4 top-4 text-slate-400 transition-colors hover:text-slate-600"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="mb-6 pr-6">
+              <h3 className="text-lg font-bold text-slate-800">Reset password</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Enter your email and we will send a link to reset your password.
+              </p>
+            </div>
+
+            {!isSubmitted ? (
+              <form onSubmit={handleResetSubmit} className="space-y-4">
+                {resetMutation.isError ? (
+                  <p className="flex items-start gap-2 rounded-2xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+                    <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{firebaseAuthMessage(resetMutation.error)}</span>
+                  </p>
+                ) : null}
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Email address
+                  </span>
+                  <span className="relative block">
+                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="email"
+                      placeholder="your.email@example.com"
+                      value={resetEmail}
+                      onChange={(e) => {
+                        setResetEmail(e.target.value);
+                        if (resetMutation.isError) {
+                          resetMutation.reset();
+                        }
+                      }}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[#3EB370] focus:bg-white focus:ring-4 focus:ring-[#3EB370]/15"
+                      required
+                    />
+                  </span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={resetMutation.isPending}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#3EB370] py-3 text-sm font-semibold text-white transition hover:bg-[#349B61] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {resetMutation.isPending ? (
+                    <>
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send reset link"
+                  )}
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-3 py-2 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-[#3EB370]">
+                  <Mail className="h-6 w-6" />
+                </div>
+                <p className="text-sm font-medium text-slate-800">Reset link sent</p>
+                <p className="text-xs text-slate-500">
+                  Please check your inbox at <span className="font-semibold">{resetEmail}</span>
+                </p>
+                <button
+                  onClick={closeModal}
+                  className="mt-2 w-full rounded-2xl bg-slate-100 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+                >
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
